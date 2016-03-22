@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: b9dd42c08dc25449e8c0358ab9b533ab
+ShaderImporter:
+  defaultTextures:
+  - _MainTex: {instanceID: 0}
+  - _MainMask: {instanceID: 0}
+  - _FrameTex: {instanceID: 0}
+  - _FrameFillTex: {instanceID: 0}
+  - _FrameMask: {instanceID: 0}
+  - _Transition: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
