@@ -264,7 +264,7 @@ MonoBehaviour:
   xSize: 30
   ySize: 20
   radius: 8
-  insideOut: 0
+  insideOut: 1
 --- !u!23 &1680756198
 MeshRenderer:
   m_ObjectHideFlags: 0
