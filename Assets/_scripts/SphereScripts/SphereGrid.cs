@@ -12,10 +12,16 @@ public class SphereGrid : MonoBehaviour
     private Vector3[] vertices;
     private Vector3[] samples;
     private Mesh mesh;
+    private bool[] floorPlan;
 
     private void Awake()
     {
         StartCoroutine(Generate());
+    }
+
+    private void getFloorPlan()
+    {
+        
     }
 
     private IEnumerator Generate()
