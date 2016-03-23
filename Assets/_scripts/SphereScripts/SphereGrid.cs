@@ -12,7 +12,7 @@ public class SphereGrid : MonoBehaviour
     private Vector3[] vertices;
     private Vector3[] samples;
     private Mesh mesh;
-    private bool[] floorPlan;
+    private bool[,] floorPlan;
 
     private void Awake()
     {
@@ -21,7 +21,7 @@ public class SphereGrid : MonoBehaviour
 
     private void getFloorPlan()
     {
-        
+        floorPlan = new bool[xSize,ySize];
     }
 
     private IEnumerator Generate()
