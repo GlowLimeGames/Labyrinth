@@ -8,6 +8,11 @@ var ObjectsTagName: String;
 var ForcePower: float = 1 ;
 
 
+
+
+
+
+
 function Update () {
 
 if (Active == true){
@@ -30,7 +35,7 @@ var GameObjects = GameObject.FindGameObjectsWithTag(ObjectsTagName).Select(funct
 
 for (var i = 0; i < GameObjects.length; i++)
         {
-GameObjects[i].GetComponent.<Rigidbody2D>().AddForce (MyObjectsForce *ForcePower);
+GameObjects[i].GetComponent.<Rigidbody2D>().AddForce(MyObjectsForce *ForcePower);
    
 	}
 }
