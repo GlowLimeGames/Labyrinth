@@ -267,6 +267,7 @@ MonoBehaviour:
   insideOut: 0
   wallHeight: 1
   drawGizmos: 1
+
 --- !u!23 &1680756198
 MeshRenderer:
   m_ObjectHideFlags: 0
