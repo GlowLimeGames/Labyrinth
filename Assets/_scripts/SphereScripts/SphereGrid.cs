@@ -9,24 +9,67 @@ public class SphereGrid : MonoBehaviour
     public int xSize, ySize;
     public double radius;
     public bool insideOut;
+    public float wallHeight;
+    public bool drawGizmos;
     private Vector3[] vertices;
     private Vector3[] samples;
     private Mesh mesh;
-    private bool[,] floorPlan;
+    private bool[,] wallHere;
 
     private void Awake()
     {
-        StartCoroutine(Generate());
+        setDefaultWallPlan();
+        Generate();
+        ExtrudeWalls();
+        //StartCoroutine(Generate());
     }
 
-    private void getFloorPlan()
+    private void ExtrudeWalls()
     {
-        floorPlan = new bool[xSize,ySize];
+        for (int y = 0; y < ySize; y++)
+        {
+            for (int x = 0; x < xSize; x++)
+            {
+                if (wallHere[x, y])
+                {
+                    int i = 2 * x + (4 * xSize) * y;
+                    int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
+                    foreach (int idx in idxs)
+                    {
+                        Vector3 extrudeDir = vertices[idx].normalized;
+                        extrudeDir *= wallHeight;
+                        if (insideOut)
+                            extrudeDir *= -1;
+                        vertices[idx] = vertices[idx] + extrudeDir;
+                    }
+                }
+            }
+        }
+        mesh.vertices = vertices;
     }
 
-    private IEnumerator Generate()
+
+    void setDefaultWallPlan()
     {
-        WaitForSeconds wait = new WaitForSeconds(0.05f);
+        wallHere = new bool[xSize,ySize];
+        //for (int i = 0; i < xSize; i++)
+        //    wallPlan[i, 0] = wallPlan[i, ySize - 1] = true;
+        for (int y = 0; y < ySize; y++)
+        {
+            for (int x = 0; x < xSize; x++)
+            {
+                if (y < 3 || y > (ySize - 3) || x < 3)
+                    wallHere[x, y] = false;
+                else if(y % 2 != 0)
+                    wallHere[x, y] = true;
+                //Debug.Log(String.Format("{0}", wallHere[x, y].ToString()));
+            }
+        }
+    }
+
+    private void Generate()
+    {
+        //WaitForSeconds wait = new WaitForSeconds(0.05f);
 
         GetComponent<MeshFilter>().mesh = mesh = new Mesh();
         mesh.name = "Procedural Grid";
@@ -90,13 +133,16 @@ public class SphereGrid : MonoBehaviour
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         mesh.RecalculateNormals();
-        yield return null;
+        //yield return null;
+        return;
+
+        #region Scrap Code
 
         //Vector2[] uv = new Vector2[vertices.Length];
         //Vector4[] tangents = new Vector4[vertices.Length];
         //Vector4 tangent = new Vector4(1f, 0f, 0f, -1f);
 
-     
+
         //for (int ti = 0, vi = 0, y = 0; y < ySize; y++, vi++)
         //{
         //    for (int x = 0; x < xSize; x++, ti += 6, vi++)
@@ -112,19 +158,42 @@ public class SphereGrid : MonoBehaviour
         //    }
         //}
         //mesh.triangles = triangles;
-            
+
+        #endregion
+
     }
+
     private void OnDrawGizmos()
     {
         if (vertices == null)
             return;
-
-        Gizmos.color = Color.black;
-        for (int i = 0; i < vertices.Length; i++)
+        if (drawGizmos)
         {
-            Gizmos.DrawSphere(transform.TransformPoint(vertices[i]), 0.1f);
-            //Debug.Log(vertices[i]);
-            
+            Gizmos.color = Color.black;
+            for (int i = 0; i < vertices.Length; i++)
+            {
+                Gizmos.DrawSphere(transform.TransformPoint(vertices[i]), 0.1f);
+            }
+            Gizmos.color = Color.magenta;
+            for (int y = 0; y < ySize; y++)
+            {
+                for (int x = 0; x < xSize; x++)
+                {
+                    if (wallHere[x, y])
+                    {
+                        int i = 2*x + (4*xSize)*y;
+                        int[] idxs = {i, i + 1, i + 2*xSize, i + 1 + 2*xSize};
+                        foreach (int idx in idxs)
+                        {
+                            Vector3 extrudeDir = vertices[idx].normalized;
+                            extrudeDir *= wallHeight;
+                            if (insideOut)
+                                extrudeDir *= -1;
+                            Gizmos.DrawRay(transform.TransformPoint(vertices[idx]), extrudeDir);
+                         }
+                    }
+                }
+            }
         }
     }
 
