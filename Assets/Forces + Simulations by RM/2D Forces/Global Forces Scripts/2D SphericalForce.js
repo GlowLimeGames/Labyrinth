@@ -9,6 +9,10 @@ var ForcePower: float = 1 ;
 var ForceRange: float = 1;
 
 
+
+
+
+
 function Update () {
 
 if (Active == true){

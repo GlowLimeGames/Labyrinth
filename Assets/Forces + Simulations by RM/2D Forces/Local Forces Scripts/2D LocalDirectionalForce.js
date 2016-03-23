@@ -4,6 +4,13 @@ var Active: boolean = true;
 var Force: Transform;
 var ForcePower: float = 1 ;
 
+
+
+
+
+
+
+
 function Update () {
 
 if (Active == true){
