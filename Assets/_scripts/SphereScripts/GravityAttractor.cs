@@ -4,6 +4,7 @@ using System.Collections;
 public class GravityAttractor : MonoBehaviour
 {
     public float gravity = -10f;
+    
 
     public void Attract(Transform body)
     {
