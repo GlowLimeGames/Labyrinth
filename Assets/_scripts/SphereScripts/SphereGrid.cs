@@ -17,11 +17,13 @@ public class SphereGrid : MonoBehaviour
     public float wallHeight;
     public bool drawGizmos;
     public string wallPatternString;
+    public Material[] materials;
     private Vector3[] vertices;
     private Vector3[] samples;
     private Mesh mesh;
     private bool[,] wallHere;
     private Vector3 lastClickPoint;
+    private int N;
 
     private bool lastInsideOutSetting;
 
@@ -29,7 +31,9 @@ public class SphereGrid : MonoBehaviour
     {
         lastInsideOutSetting = insideOut;
         SetUpWallPlan();
+        
         newGenerateAndExtrude();
+
         //SphereCollider collider = GetComponent<SphereCollider>();
         //collider.radius = (float)radius;
 
@@ -70,21 +74,24 @@ public class SphereGrid : MonoBehaviour
         mesh.RecalculateBounds();
 
     }
-
     
     void SetUpWallPlan()
     {
         wallHere = new bool[xSize, ySize];
-        switch (wallPatternString)
+        string wallPattern = wallPatternString.ToLower();
+        switch (wallPattern)
         {
-            case "All Walls":
+            case "all walls":
                 SetWallsToBool(true); 
                 break;
-            case "All Floors":
+            case "all floors":
                 SetWallsToBool(false);
                 break;
-            case "Test":
+            case "test":
                 SetTestWallPlan();
+                break;
+            case "half":
+                SetTopHalfToWalls();
                 break;
             default:
                 SetWallsToBool(false); // Default to all floors
@@ -92,6 +99,16 @@ public class SphereGrid : MonoBehaviour
         }
     }
 
+    private void SetTopHalfToWalls()
+    {
+        for (int y = 0; y < ySize/2; y++)
+        {
+            for (int x = 0; x < xSize; x++)
+            {
+                wallHere[x, y] = true;
+            }
+        }
+    }
     private void SetWallsToBool(bool wallType)
     {
         for (int y = 0; y < ySize; y++)
@@ -127,11 +144,12 @@ public class SphereGrid : MonoBehaviour
         // TODO Create walls, perhaps using dictionary to help
 
         GetComponent<MeshFilter>().mesh = mesh = new Mesh();
+        mesh.Clear();
         // TODO add multiple materials for ground/floors etc
-        // GetComponent<Renderer>().materials = m;
-
+        GetComponent<Renderer>().materials = materials;
         mesh.name = "Procedural Grid";
 
+        N = 4*xSize*ySize;
         vertices = new Vector3[4 * xSize * ySize]; // 4 vertices per square
         Vector3[] normals = new Vector3[vertices.Length];
         //int[] triangles = new int[xSize * ySize * 6];
@@ -140,6 +158,8 @@ public class SphereGrid : MonoBehaviour
         double deltaPhi = 2*Math.PI/xSize;
         double deltaTheta = Math.PI/ySize;
         double r = radius;
+
+        // Set vertices
         for (int y = 0; y < ySize; y++)
         {
             for (int x = 0; x < xSize; x++)
@@ -171,15 +191,22 @@ public class SphereGrid : MonoBehaviour
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
 
                 // Triangle Idx of top left corner of current square
-                //int ti = 6 * x + (6 * xSize) * y;
+                // int ti = 6 * x + (6 * xSize) * y;
                 int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
                 int TL = i;
                 int TR = i + 1;
                 int BL = i + 2 * xSize;
                 int BR = i + 2 * xSize + 1;
-                // Add both triangles, reversing order if inside out.
+                // Add both triangles, reversing order if inside out. 
+                // TODO add normals to this
                 AddTriangleToList(triangleGroundList, TL, TR, BR, insideOut);
                 AddTriangleToList(triangleGroundList, TL, BR, BL, insideOut);
+
+                // Add walls between this square and square to left
+                AddLatitudeWall(triangleWallList, (x-1), y, x, y);
+                // Add walls between this square and square above (towards north pole)
+                if (y > 0) // Don't add if at north pole
+                    AddLongitudeWall(triangleWallList, x, (y - 1), x, y);
 
             }
         }
@@ -197,14 +224,70 @@ public class SphereGrid : MonoBehaviour
 
         mesh.vertices = vertices;
         mesh.normals = normals;
-        mesh.subMeshCount = 1;
-        mesh.SetTriangles(triangleGroundList,0);
-        //mesh.SetTriangles(triangleWallList, 1);
+        int subMeshCount = 0;
+        mesh.subMeshCount = 2;
+        if (triangleGroundList.Count > 0)
+        {
+            mesh.SetTriangles(triangleGroundList, 0);
+        }
+        if (triangleWallList.Count > 0)
+        {
+            mesh.SetTriangles(triangleWallList, 2);
+            Debug.Log(String.Format("wall count {0}", triangleWallList.Count/6));
+        }
+        else
+        {
+            Debug.Log(String.Format("f-wall count {0}", triangleWallList.Count / 6));
+        }
+        //mesh.subMeshCount = subMeshCount;
 
         ExtrudeWalls();
         var meshc = GetComponent<MeshCollider>();
         meshc.sharedMesh = mesh;
         return;
+    }
+    // Given the x,y coords of two patches, add vertical wall if one is wall, one is floor
+    private void AddLatitudeWall(List<int> triList, int leftSquareX, int leftSquareY, int rightSquareX, int rightSquareY)
+    {
+        // TODO Verify
+        leftSquareX = (leftSquareX + xSize)%xSize;
+        //Debug.Log(String.Format("Lx {0} Ly {1} Rx {2} Ry{3}", leftSquareX, leftSquareY, rightSquareX, rightSquareY));
+        bool leftType = wallHere[leftSquareX, leftSquareY];
+        bool rightType = wallHere[rightSquareX, rightSquareY];
+        // Don't add wall between if they're both walls/floor
+        if (leftType == rightType) 
+            return;
+        // Idx of top left vertex for left Square
+        int leftVertIdx = 2 * leftSquareX + (4 * xSize) * leftSquareY;
+        int left_TR_vert = leftVertIdx + 1;
+        int left_BR_vert = leftVertIdx + 1 + 2*xSize;
+        int rightVertIdx = 2 * rightSquareX + (4 * xSize) * rightSquareY;
+        int right_TL_vert = rightVertIdx;
+        int right_BL_vert = rightVertIdx + 2 * xSize;
+        //int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
+        AddTriangleToList(triList, left_BR_vert, left_TR_vert, right_TL_vert, insideOut);
+        AddTriangleToList(triList, left_BR_vert, right_TL_vert, right_BL_vert, insideOut);
+    }
+    // Given the x,y coords of two patches, add vertical wall if one is wall, one is floor
+    private void AddLongitudeWall(List<int> triList, int topSquareX, int topSquareY, int bottomSquareX, int bottomSquareY)
+    {
+        // TODO Verify
+        
+        bool topType = wallHere[topSquareX, topSquareY];
+        bool botType = wallHere[bottomSquareX, bottomSquareY];
+        // Don't add wall between if they're both walls/floor
+        if (topType == botType)
+            return;
+        // Idx of top left vertex for left Square
+        int topVertIdx = 2 * topSquareX + (4 * xSize) * topSquareY;
+        int top_BL_vert = topVertIdx + 2 * xSize;
+        int top_BR_vert = topVertIdx + 2*xSize + 1;
+        int botVertIdx = 2 * bottomSquareX + (4 * xSize) * bottomSquareY;
+        int bot_TL_vert = botVertIdx;
+        int bot_TR_vert = botVertIdx + 1;
+        //int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
+        AddTriangleToList(triList, top_BL_vert, top_BR_vert, bot_TR_vert, insideOut);
+        AddTriangleToList(triList, top_BL_vert, bot_TR_vert, bot_TL_vert, insideOut);
     }
     private void AddTriangleToList(List<int> triList, int tri1, int tri2, int tri3, bool reverse)
     {
@@ -222,6 +305,7 @@ public class SphereGrid : MonoBehaviour
         }
     }
 
+    #region Old GenerateExtrude
     private void GenerateAndExtrude()
     {
         // TODO Create walls, perhaps using dictionary to help
@@ -333,8 +417,10 @@ public class SphereGrid : MonoBehaviour
         #endregion
 
     }
+    #endregion
 
 
+    #region Special Functions "On_blah"
     private void OnDrawGizmos()
     {
         if (vertices == null)
@@ -412,6 +498,6 @@ public class SphereGrid : MonoBehaviour
     {
         vertices = null;
     }
-
+    #endregion
 
 }

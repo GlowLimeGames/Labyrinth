@@ -1,0 +1,189 @@
+fileFormatVersion: 2
+guid: db60905b1cf6d8b46b36d9668c652276
+timeCreated: 1459620302
+licenseType: Free
+ModelImporter:
+  serializedVersion: 19
+  fileIDToRecycleName:
+    100000: //RootNode
+    100002: Shack
+    100004: Shack_001
+    100006: Shack_002
+    100008: Shack_003
+    100010: Shack_004
+    100012: Shack_005
+    100014: Shack_006
+    100016: Shack_007
+    100018: Shack_008
+    100020: Shack_009
+    100022: Shack_010
+    100024: Shack_011
+    100026: Shack_012
+    100028: Shack_013
+    100030: Shack_014
+    100032: Shack_015
+    100034: Shack_016
+    100036: Shack_017
+    100038: Shack_018
+    100040: Shack_019
+    100042: Shack_020
+    100044: Shack_021
+    100046: Shack_022
+    400000: //RootNode
+    400002: Shack
+    400004: Shack_001
+    400006: Shack_002
+    400008: Shack_003
+    400010: Shack_004
+    400012: Shack_005
+    400014: Shack_006
+    400016: Shack_007
+    400018: Shack_008
+    400020: Shack_009
+    400022: Shack_010
+    400024: Shack_011
+    400026: Shack_012
+    400028: Shack_013
+    400030: Shack_014
+    400032: Shack_015
+    400034: Shack_016
+    400036: Shack_017
+    400038: Shack_018
+    400040: Shack_019
+    400042: Shack_020
+    400044: Shack_021
+    400046: Shack_022
+    2300000: Shack
+    2300002: Shack_001
+    2300004: Shack_002
+    2300006: Shack_003
+    2300008: Shack_004
+    2300010: Shack_005
+    2300012: Shack_006
+    2300014: Shack_007
+    2300016: Shack_008
+    2300018: Shack_009
+    2300020: Shack_010
+    2300022: Shack_011
+    2300024: Shack_012
+    2300026: Shack_013
+    2300028: Shack_014
+    2300030: Shack_015
+    2300032: Shack_016
+    2300034: Shack_017
+    2300036: Shack_018
+    2300038: Shack_019
+    2300040: Shack_020
+    2300042: Shack_021
+    2300044: Shack_022
+    3300000: Shack
+    3300002: Shack_001
+    3300004: Shack_002
+    3300006: Shack_003
+    3300008: Shack_004
+    3300010: Shack_005
+    3300012: Shack_006
+    3300014: Shack_007
+    3300016: Shack_008
+    3300018: Shack_009
+    3300020: Shack_010
+    3300022: Shack_011
+    3300024: Shack_012
+    3300026: Shack_013
+    3300028: Shack_014
+    3300030: Shack_015
+    3300032: Shack_016
+    3300034: Shack_017
+    3300036: Shack_018
+    3300038: Shack_019
+    3300040: Shack_020
+    3300042: Shack_021
+    3300044: Shack_022
+    4300000: Shack
+    4300002: Shack_001
+    4300004: Shack_002
+    4300006: Shack_003
+    4300008: Shack_004
+    4300010: Shack_005
+    4300012: Shack_006
+    4300014: Shack_007
+    4300016: Shack_008
+    4300018: Shack_009
+    4300020: Shack_010
+    4300022: Shack_011
+    4300024: Shack_012
+    4300026: Shack_013
+    4300028: Shack_014
+    4300030: Shack_015
+    4300032: Shack_016
+    4300034: Shack_017
+    4300036: Shack_018
+    4300038: Shack_019
+    4300040: Shack_020
+    4300042: Shack_021
+    4300044: Shack_022
+    9500000: //RootNode
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleRotations: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    importBlendShapes: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    hasTranslationDoF: 0
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 2
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

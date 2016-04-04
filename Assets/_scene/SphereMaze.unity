@@ -335,16 +335,16 @@ Prefab:
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
-      propertyPath: insideOut
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 13546032, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
-      propertyPath: m_Enabled
-      value: 0
+      propertyPath: wallPatternString
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
-      propertyPath: wallPatternString
-      value: Test
+      propertyPath: xSize
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
+      propertyPath: ySize
+      value: 20
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
@@ -367,7 +367,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &982333168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -386,6 +386,7 @@ MonoBehaviour:
   wallHeight: 0
   drawGizmos: 0
   wallPatternString: 
+  materials: []
 --- !u!64 &982333169
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -609,28 +610,12 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 4
---- !u!1 &1764910622 stripped
-GameObject:
-  m_PrefabParentObject: {fileID: 199098, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
-  m_PrefabInternal: {fileID: 626050501}
 --- !u!114 &1764910627 stripped
 MonoBehaviour:
   m_PrefabParentObject: {fileID: 11473572, guid: d5af94025d109e54494cafe052bd1fd8,
     type: 2}
   m_PrefabInternal: {fileID: 626050501}
   m_Script: {fileID: 11500000, guid: 4fc84cb31601b5647ac22e60ccbcbd16, type: 3}
---- !u!64 &1764910629
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 1764910622}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Convex: 0
-  m_Mesh: {fileID: 0}
 --- !u!1 &1931662236
 GameObject:
   m_ObjectHideFlags: 0
