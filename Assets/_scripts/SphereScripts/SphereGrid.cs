@@ -18,8 +18,11 @@ public class SphereGrid : MonoBehaviour
     public bool drawGizmos;
     public string wallPatternString;
     public Material[] materials;
+    private MeshHolder ground;
+    private MeshHolder vertWalls;
+    private MeshHolder horzWalls;
+
     private Vector3[] vertices;
-    private Vector3[] samples;
     private Mesh mesh;
     private bool[,] wallHere;
     private Vector3 lastClickPoint;
@@ -246,9 +249,11 @@ public class SphereGrid : MonoBehaviour
         meshc.sharedMesh = mesh;
         return;
     }
+    
     // Given the x,y coords of two patches, add vertical wall if one is wall, one is floor
     private void AddLatitudeWall(List<int> triList, int leftSquareX, int leftSquareY, int rightSquareX, int rightSquareY)
     {
+
         // TODO Verify
         leftSquareX = (leftSquareX + xSize)%xSize;
         //Debug.Log(String.Format("Lx {0} Ly {1} Rx {2} Ry{3}", leftSquareX, leftSquareY, rightSquareX, rightSquareY));
@@ -306,116 +311,96 @@ public class SphereGrid : MonoBehaviour
     }
 
     #region Old GenerateExtrude
+
+
     private void GenerateAndExtrude()
     {
-        // TODO Create walls, perhaps using dictionary to help
-
         GetComponent<MeshFilter>().mesh = mesh = new Mesh();
+        mesh.Clear();
+        // TODO add multiple materials for ground/floors etc
+        GetComponent<Renderer>().materials = materials;
+        mesh.name = "Procedural Sphere";
 
-        mesh.name = "Procedural Grid";
+        N = 4 * xSize * ySize;
+        
+        ground = new MeshHolder();
+        List<Vector3> vertList = ground.verts;
+        vertWalls = new MeshHolder();
+        horzWalls = new MeshHolder();
 
-        vertices = new Vector3[4 * xSize * ySize]; // 4 vertices per square
-        Vector3[] normals = new Vector3[vertices.Length];
-        int[] triangles = new int[xSize * ySize * 6];
+        // Used to calculate angle of verts relative to top-left vert
         double deltaPhi = 2 * Math.PI / xSize;
         double deltaTheta = Math.PI / ySize;
         double r = radius;
+
+        int vi = 0; // vert index
         for (int y = 0; y < ySize; y++)
         {
             for (int x = 0; x < xSize; x++)
             {
-                int i = 2 * x + (4 * xSize) * y;
                 double phi = 2 * Math.PI * x / xSize; // X angle
                 double theta = Math.PI * y / ySize; // Y angle 
-                // Boxes are arranged 0 1 2    Each Square idx is arranged  0 1
-                //                    3 4 5                                 2 3
-                // Vertex 0
-                vertices[i] = new Vector3(
-                    (float)(r * Math.Sin(theta) * Math.Cos(phi)),
-                    (float)(r * Math.Cos(theta)),
-                    (float)(r * Math.Sin(theta) * Math.Sin(phi)));
-                // Vertex 1
-                vertices[i + 1] = new Vector3(
+
+                vertList.Add(new Vector3(  // Add TL vert
+                    (float) (r*Math.Sin(theta)*Math.Cos(phi)),
+                    (float) (r*Math.Cos(theta)),
+                    (float) (r*Math.Sin(theta)*Math.Sin(phi))));
+                vertList.Add(new Vector3( // Add TR vert
                     (float)(r * Math.Sin(theta) * Math.Cos(phi + deltaPhi)),
                     (float)(r * Math.Cos(theta)),
-                    (float)(r * Math.Sin(theta) * Math.Sin(phi + deltaPhi)));
-                // Vertex 2
-                vertices[i + 2 * xSize] = new Vector3(
+                    (float)(r * Math.Sin(theta) * Math.Sin(phi + deltaPhi))));
+                vertList.Add(new Vector3( // Add BL vert
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
-                // Vertex 3
-                vertices[i + 1 + 2 * xSize] = new Vector3(
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi))));
+                vertList.Add(new Vector3( // Add BR vert
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi))));
+                // Add both triangles, reversing order if inside out. 
+                // TODO add normals to this
+                AddTriangleToList(triList, vi, vi+1, vi+3, insideOut);
+                AddTriangleToList(triList, vi, vi + 3, vi + 2, insideOut);
 
-                // Triangle Idx of top left corner of current square
-                int ti = 6 * x + (6 * xSize) * y;
-                if (insideOut)
-                {
-                    int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-                    triangles[ti] = triangles[ti + 3] = idxs[0];
-                    triangles[ti + 1] = triangles[ti + 5] = idxs[3];
-                    triangles[ti + 2] = idxs[1];
-                    triangles[ti + 4] = idxs[2];
-                }
-                else
-                {
-                    int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-                    triangles[ti] = triangles[ti + 3] = idxs[0];
-                    triangles[ti + 1] = idxs[1];
-                    triangles[ti + 2] = triangles[ti + 4] = idxs[3];
-                    triangles[ti + 5] = idxs[2];
-                }
-
+                AddVerticalWall();
             }
+            vi += 4;
         }
-        for (int vIdx = 0; vIdx < vertices.Length; vIdx++)
-        {
-            // Find the direction from center to vertex, and if insideOut reverse it towards center
-            Vector3 normal = vertices[vIdx] * (insideOut ? -1 : 1);
-            normal.Normalize();
-            normals[vIdx] = normal;
-        }
-        //for (int t = 0; t < triangles.Length; t++)
-        //{
-        //    Debug.Log(String.Format("{0} -> {1}", t, triangles[t]));
-        //}
-        mesh.vertices = vertices;
-        mesh.normals = normals;
-        mesh.triangles = triangles;
-
-        ExtrudeWalls();
-        var meshc = GetComponent<MeshCollider>();
-        meshc.sharedMesh = mesh;
-        return;
 
         #region Scrap Code
 
-        //Vector2[] uv = new Vector2[vertices.Length];
-        //Vector4[] tangents = new Vector4[vertices.Length];
-        //Vector4 tangent = new Vector4(1f, 0f, 0f, -1f);
+                //Vector2[] uv = new Vector2[vertices.Length];
+                //Vector4[] tangents = new Vector4[vertices.Length];
+                //Vector4 tangent = new Vector4(1f, 0f, 0f, -1f);
 
 
-        //for (int ti = 0, vi = 0, y = 0; y < ySize; y++, vi++)
-        //{
-        //    for (int x = 0; x < xSize; x++, ti += 6, vi++)
-        //    {
-        //        // Add 
-        //        triangles[ti] = vi;
-        //        triangles[ti + 3] = triangles[ti + 2] = vi + 1;
-        //        triangles[ti + 4] = triangles[ti + 1] = vi + xSize + 1;
-        //        triangles[ti + 5] = vi + xSize + 2;
+                //for (int ti = 0, vi = 0, y = 0; y < ySize; y++, vi++)
+                //{
+                //    for (int x = 0; x < xSize; x++, ti += 6, vi++)
+                //    {
+                //        // Add 
+                //        triangles[ti] = vi;
+                //        triangles[ti + 3] = triangles[ti + 2] = vi + 1;
+                //        triangles[ti + 4] = triangles[ti + 1] = vi + xSize + 1;
+                //        triangles[ti + 5] = vi + xSize + 2;
 
 
-        //        //yield return wait;
-        //    }
-        //}
-        //mesh.triangles = triangles;
+                //        //yield return wait;
+                //    }
+                //}
+                //mesh.triangles = triangles;
 
-        #endregion
+                #endregion
 
+    }
+
+    private void AddVerticalWall(List<int> triList,
+        int leftSquareX, int leftSquareY,
+        int rightSquareX, int rightSquareY)
+    {
+        leftSquareX = (leftSquareX + xSize) % xSize; // Wrap the index around
+        bool leftType = wallHere[leftSquareX, leftSquareY];
+        bool rightType = wallHere[rightSquareX, rightSquareY];
     }
     #endregion
 
