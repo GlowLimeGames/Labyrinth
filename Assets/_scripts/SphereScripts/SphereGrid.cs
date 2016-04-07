@@ -75,7 +75,21 @@ public class SphereGrid : MonoBehaviour
         }
         mesh.vertices = vertices;
         mesh.RecalculateBounds();
+    }
 
+    private bool isWall(int x, int y)
+    {
+        x = (x + xSize)%xSize;
+        return wallHere[x, y];
+    }
+
+    private void ExtrudePoint(ref Vector3 point)
+    {
+        Vector3 extrudeDir = point.normalized;
+        extrudeDir *= wallHeight;
+        if (insideOut)
+            extrudeDir *= -1;
+        point += extrudeDir;
     }
     
     void SetUpWallPlan()
@@ -122,7 +136,6 @@ public class SphereGrid : MonoBehaviour
             }
         }
     }
-
     void SetTestWallPlan()
     {
         wallHere = new bool[xSize,ySize];
@@ -322,18 +335,13 @@ public class SphereGrid : MonoBehaviour
         mesh.name = "Procedural Sphere";
 
         N = 4 * xSize * ySize;
-        
-        ground = new MeshHolder();
-        List<Vector3> vertList = ground.verts;
-        vertWalls = new MeshHolder();
-        horzWalls = new MeshHolder();
 
         // Used to calculate angle of verts relative to top-left vert
         double deltaPhi = 2 * Math.PI / xSize;
         double deltaTheta = Math.PI / ySize;
         double r = radius;
 
-        int vi = 0; // vert index
+        ground = new MeshHolder(0);
         for (int y = 0; y < ySize; y++)
         {
             for (int x = 0; x < xSize; x++)
@@ -341,56 +349,99 @@ public class SphereGrid : MonoBehaviour
                 double phi = 2 * Math.PI * x / xSize; // X angle
                 double theta = Math.PI * y / ySize; // Y angle 
 
-                vertList.Add(new Vector3(  // Add TL vert
+                var p0 = new Vector3( // Add TL vert
                     (float) (r*Math.Sin(theta)*Math.Cos(phi)),
                     (float) (r*Math.Cos(theta)),
-                    (float) (r*Math.Sin(theta)*Math.Sin(phi))));
-                vertList.Add(new Vector3( // Add TR vert
-                    (float)(r * Math.Sin(theta) * Math.Cos(phi + deltaPhi)),
+                    (float) (r*Math.Sin(theta)*Math.Sin(phi)));
+                var p1 = new Vector3( // Add TR vert
+                    (float) (r*Math.Sin(theta)*Math.Cos(phi + deltaPhi)),
+                    (float) (r*Math.Cos(theta)),
+                    (float) (r*Math.Sin(theta)*Math.Sin(phi + deltaPhi)));
+                var p2 = new Vector3( // Add BL vert
+                    (float) (r*Math.Sin(theta + deltaTheta)*Math.Cos(phi)),
+                    (float) (r*Math.Cos(theta + deltaTheta)),
+                    (float) (r*Math.Sin(theta + deltaTheta)*Math.Sin(phi)));
+                var p3 = new Vector3( // Add BR vert
+                    (float) (r*Math.Sin(theta + deltaTheta)*Math.Cos(phi + deltaPhi)),
+                    (float) (r*Math.Cos(theta + deltaTheta)),
+                    (float) (r*Math.Sin(theta + deltaTheta)*Math.Sin(phi + deltaPhi)));
+                ground.AddSquare(p0, p1, p2, p3, insideOut);
+            }
+        }
+        vertWalls = new MeshHolder(ground.nextTriIdx);
+        for (int y = 0; y < ySize; y++)
+        {
+            for (int x = 0; x < xSize; x++)
+            {
+                double phi = 2 * Math.PI * x / xSize; // X angle
+                double theta = Math.PI * y / ySize; // Y angle 
+                
+                var left_TR = new Vector3( // Add TL vert
+                    (float)(r * Math.Sin(theta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta)),
-                    (float)(r * Math.Sin(theta) * Math.Sin(phi + deltaPhi))));
-                vertList.Add(new Vector3( // Add BL vert
+                    (float)(r * Math.Sin(theta) * Math.Sin(phi)));
+                var left_BR = new Vector3( // Add BL vert
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi))));
-                vertList.Add(new Vector3( // Add BR vert
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                if (isWall(x - 1, y))
+                {
+                    ExtrudePoint(ref left_TR);
+                    ExtrudePoint(ref left_BR);
+                }
+                var right_TL = new Vector3( // Add TL vert
+                    (float)(r * Math.Sin(theta) * Math.Cos(phi)),
+                    (float)(r * Math.Cos(theta)),
+                    (float)(r * Math.Sin(theta) * Math.Sin(phi)));
+                var right_BL = new Vector3( // Add BL vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi))));
-                // Add both triangles, reversing order if inside out. 
-                // TODO add normals to this
-                AddTriangleToList(triList, vi, vi+1, vi+3, insideOut);
-                AddTriangleToList(triList, vi, vi + 3, vi + 2, insideOut);
-
-                AddVerticalWall();
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                if (isWall(x, y))
+                {
+                    ExtrudePoint(ref right_TL);
+                    ExtrudePoint(ref right_BL);
+                }
+                vertWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
             }
-            vi += 4;
         }
+
+        horzWalls = new MeshHolder(vertWalls.nextTriIdx);
+        for (int y = 0; y < ySize; y++)
+        {
+            for (int x = 0; x < xSize; x++)
+            {
+            }
+        }
+
+
+
+
 
         #region Scrap Code
 
-                //Vector2[] uv = new Vector2[vertices.Length];
-                //Vector4[] tangents = new Vector4[vertices.Length];
-                //Vector4 tangent = new Vector4(1f, 0f, 0f, -1f);
+        //Vector2[] uv = new Vector2[vertices.Length];
+        //Vector4[] tangents = new Vector4[vertices.Length];
+        //Vector4 tangent = new Vector4(1f, 0f, 0f, -1f);
 
 
-                //for (int ti = 0, vi = 0, y = 0; y < ySize; y++, vi++)
-                //{
-                //    for (int x = 0; x < xSize; x++, ti += 6, vi++)
-                //    {
-                //        // Add 
-                //        triangles[ti] = vi;
-                //        triangles[ti + 3] = triangles[ti + 2] = vi + 1;
-                //        triangles[ti + 4] = triangles[ti + 1] = vi + xSize + 1;
-                //        triangles[ti + 5] = vi + xSize + 2;
+        //for (int ti = 0, vi = 0, y = 0; y < ySize; y++, vi++)
+        //{
+        //    for (int x = 0; x < xSize; x++, ti += 6, vi++)
+        //    {
+        //        // Add 
+        //        triangles[ti] = vi;
+        //        triangles[ti + 3] = triangles[ti + 2] = vi + 1;
+        //        triangles[ti + 4] = triangles[ti + 1] = vi + xSize + 1;
+        //        triangles[ti + 5] = vi + xSize + 2;
 
 
-                //        //yield return wait;
-                //    }
-                //}
-                //mesh.triangles = triangles;
+        //        //yield return wait;
+        //    }
+        //}
+        //mesh.triangles = triangles;
 
-                #endregion
+        #endregion
 
     }
 
@@ -446,7 +497,6 @@ public class SphereGrid : MonoBehaviour
 
     void OnMouseDown()
     {
-        
 
         var mousePos = Input.mousePosition;
         var hit = new RaycastHit();
