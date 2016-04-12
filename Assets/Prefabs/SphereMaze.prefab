@@ -102,13 +102,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a9032b5b54ffa0046a79687b1cdc5c46, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  xSize: 6
-  ySize: 6
+  xSize: 20
+  ySize: 20
   radius: 8
   insideOut: 0
   wallHeight: 1
   drawGizmos: 0
-  wallPatternString: half
+  wallPatternString: 
   materials:
   - {fileID: 2100000, guid: 690430e482b54b245813397f49221200, type: 2}
   - {fileID: 2100000, guid: 149b1539e1f221b42a0af0a7bff82996, type: 2}

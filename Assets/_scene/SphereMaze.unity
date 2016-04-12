@@ -336,15 +336,15 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
       propertyPath: wallPatternString
-      value: 
+      value: test
       objectReference: {fileID: 0}
     - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
-      propertyPath: xSize
-      value: 20
+      propertyPath: insideOut
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
-      propertyPath: ySize
-      value: 20
+      propertyPath: wallHeight
+      value: 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}

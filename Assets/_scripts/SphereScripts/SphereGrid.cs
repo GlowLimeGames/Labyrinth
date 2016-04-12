@@ -35,7 +35,7 @@ public class SphereGrid : MonoBehaviour
         lastInsideOutSetting = insideOut;
         SetUpWallPlan();
         
-        newGenerateAndExtrude();
+        GenerateAndExtrude();
 
         //SphereCollider collider = GetComponent<SphereCollider>();
         //collider.radius = (float)radius;
@@ -52,32 +52,32 @@ public class SphereGrid : MonoBehaviour
     }
 
     #region Wall Functions
-    private void ExtrudeWalls()
-    {
-        for (int y = 0; y < ySize; y++)
-        {
-            for (int x = 0; x < xSize; x++)
-            {
-                if (wallHere[x, y])
-                {
-                    int i = 2 * x + (4 * xSize) * y;
-                    int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-                    foreach (int idx in idxs)
-                    {
-                        Vector3 extrudeDir = vertices[idx].normalized;
-                        extrudeDir *= wallHeight;
-                        if (insideOut)
-                            extrudeDir *= -1;
-                        vertices[idx] = vertices[idx] + extrudeDir;
-                    }
-                }
-            }
-        }
-        mesh.vertices = vertices;
-        mesh.RecalculateBounds();
-    }
+    //private void ExtrudeWalls()
+    //{
+    //    for (int y = 0; y < ySize; y++)
+    //    {
+    //        for (int x = 0; x < xSize; x++)
+    //        {
+    //            if (wallHere[x, y])
+    //            {
+    //                int i = 2 * x + (4 * xSize) * y;
+    //                int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
+    //                foreach (int idx in idxs)
+    //                {
+    //                    Vector3 extrudeDir = vertices[idx].normalized;
+    //                    extrudeDir *= wallHeight;
+    //                    if (insideOut)
+    //                        extrudeDir *= -1;
+    //                    vertices[idx] = vertices[idx] + extrudeDir;
+    //                }
+    //            }
+    //        }
+    //    }
+    //    mesh.vertices = vertices;
+    //    mesh.RecalculateBounds();
+    //}
 
-    private bool isWall(int x, int y)
+    private bool IsWall(int x, int y)
     {
         x = (x + xSize)%xSize;
         return wallHere[x, y];
@@ -257,7 +257,7 @@ public class SphereGrid : MonoBehaviour
         }
         //mesh.subMeshCount = subMeshCount;
 
-        ExtrudeWalls();
+        //ExtrudeWalls();
         var meshc = GetComponent<MeshCollider>();
         meshc.sharedMesh = mesh;
         return;
@@ -341,6 +341,7 @@ public class SphereGrid : MonoBehaviour
         double deltaTheta = Math.PI / ySize;
         double r = radius;
 
+        // Create a ground meshholder first and fill it with verts,tris, normals
         ground = new MeshHolder(0);
         for (int y = 0; y < ySize; y++)
         {
@@ -365,17 +366,65 @@ public class SphereGrid : MonoBehaviour
                     (float) (r*Math.Sin(theta + deltaTheta)*Math.Cos(phi + deltaPhi)),
                     (float) (r*Math.Cos(theta + deltaTheta)),
                     (float) (r*Math.Sin(theta + deltaTheta)*Math.Sin(phi + deltaPhi)));
+                if (IsWall(x, y))
+                {
+                    ExtrudePoint(ref p0);
+                    ExtrudePoint(ref p1);
+                    ExtrudePoint(ref p2);
+                    ExtrudePoint(ref p3);
+                }
                 ground.AddSquare(p0, p1, p2, p3, insideOut);
             }
         }
-        vertWalls = new MeshHolder(ground.nextTriIdx);
+        //We we know how many verts that there are. Start filling the vertical wall holder
+        horzWalls = new MeshHolder(ground.nextTriIdx);
+        for (int y = 0; y < ySize - 1; y++)
+        {
+            for (int x = 0; x < xSize; x++)
+            {
+                double phi = 2 * Math.PI * x / xSize; // X angle
+                double theta = Math.PI * y / ySize; // Y angle 
+
+                var top_BL = new Vector3( // Add BL vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
+                    (float)(r * Math.Cos(theta + deltaTheta)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                var top_BR = new Vector3( // Add BR vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
+                    (float)(r * Math.Cos(theta + deltaTheta)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
+
+                if (IsWall(x, y))
+                {
+                    ExtrudePoint(ref top_BL);
+                    ExtrudePoint(ref top_BR);
+                }
+                var bot_TL = new Vector3( // Add BL vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
+                    (float)(r * Math.Cos(theta + deltaTheta)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                var bot_TR = new Vector3( // Add BR vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
+                    (float)(r * Math.Cos(theta + deltaTheta)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
+                if (IsWall(x, y + 1))
+                {
+                    ExtrudePoint(ref bot_TL);
+                    ExtrudePoint(ref bot_TR);
+                }
+                horzWalls.AddSquare(top_BL, top_BR, bot_TL, bot_TR, insideOut);
+            }
+        }
+
+        //We we know how many verts that there are.Start filling the vertical wall holder
+        //vertWalls = new MeshHolder(ground.nextTriIdx);
         for (int y = 0; y < ySize; y++)
         {
             for (int x = 0; x < xSize; x++)
             {
                 double phi = 2 * Math.PI * x / xSize; // X angle
                 double theta = Math.PI * y / ySize; // Y angle 
-                
+
                 var left_TR = new Vector3( // Add TL vert
                     (float)(r * Math.Sin(theta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta)),
@@ -384,7 +433,7 @@ public class SphereGrid : MonoBehaviour
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
-                if (isWall(x - 1, y))
+                if (IsWall(x - 1, y))
                 {
                     ExtrudePoint(ref left_TR);
                     ExtrudePoint(ref left_BR);
@@ -397,26 +446,38 @@ public class SphereGrid : MonoBehaviour
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
-                if (isWall(x, y))
+                if (IsWall(x, y))
                 {
                     ExtrudePoint(ref right_TL);
                     ExtrudePoint(ref right_BL);
                 }
-                vertWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
+                //vertWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
+                horzWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
             }
         }
 
-        horzWalls = new MeshHolder(vertWalls.nextTriIdx);
-        for (int y = 0; y < ySize; y++)
-        {
-            for (int x = 0; x < xSize; x++)
-            {
-            }
-        }
+        //ground.verts.AddRange(vertWalls.verts);
+        ground.verts.AddRange(horzWalls.verts);
+        //ground.normals.AddRange(vertWalls.normals);
+        ground.normals.AddRange(horzWalls.normals);
+        //foreach (var vert in horzWalls.verts)
+        //{
+        //    Debug.Log(String.Format());
+        //}
+        
+        mesh.SetVertices(ground.verts);
+        mesh.SetNormals(ground.normals);
+
+        mesh.subMeshCount = 2;
+        mesh.SetTriangles(ground.tris, 0);
+        //mesh.SetTriangles(vertWalls.tris, 1);
+        //mesh.SetTriangles(horzWalls.tris, 2);
+        mesh.SetTriangles(horzWalls.tris, 1);
 
 
-
-
+        var meshc = GetComponent<MeshCollider>();
+        meshc.sharedMesh = mesh;
+        
 
         #region Scrap Code
 
@@ -445,14 +506,6 @@ public class SphereGrid : MonoBehaviour
 
     }
 
-    private void AddVerticalWall(List<int> triList,
-        int leftSquareX, int leftSquareY,
-        int rightSquareX, int rightSquareY)
-    {
-        leftSquareX = (leftSquareX + xSize) % xSize; // Wrap the index around
-        bool leftType = wallHere[leftSquareX, leftSquareY];
-        bool rightType = wallHere[rightSquareX, rightSquareY];
-    }
     #endregion
 
 

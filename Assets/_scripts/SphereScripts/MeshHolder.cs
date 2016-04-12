@@ -25,12 +25,26 @@ public class MeshHolder
         nextTriIdx = initialTriangleIndex;
     }
 
+    /// <summary>
+    /// Add verts/normals/tris to structure. Assumes reading order of vertices -> 0 1; 2 3
+    /// </summary>
+    /// <param name="p0"></param>
+    /// <param name="p1"></param>
+    /// <param name="p2"></param>
+    /// <param name="p3"></param>
+    /// <param name="reverse"></param>
     public void AddSquare(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, bool reverse)
     {
         verts.Add(p0);
         verts.Add(p1);
         verts.Add(p2);
         verts.Add(p3);
+        Vector3 norm = Vector3.Cross((p1 - p0), (p2 - p0));
+        norm.Normalize();
+        if (reverse)
+            norm = -norm;
+        normals.Add(norm); normals.Add(norm); normals.Add(norm); normals.Add(norm);
+
 
         int v0,v1,v2,v3;
         v0 = nextTriIdx;
