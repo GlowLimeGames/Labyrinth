@@ -26,6 +26,7 @@ public class SphereGrid : MonoBehaviour
     private MeshHolder ground;
     private MeshHolder vertWalls;
     private MeshHolder horzWalls;
+    
 
     private Vector3[] vertices;
     private Mesh mesh;
@@ -39,12 +40,12 @@ public class SphereGrid : MonoBehaviour
     #region Starting/Saving Functions
     private void Awake()
     {
+        
         lastInsideOutSetting = insideOut;
         if(!InputFileExists())
             SetUpWallPlan();
         
         GenerateAndExtrude();
-
         //SphereCollider collider = GetComponent<SphereCollider>();
         //collider.radius = (float)radius;
 
@@ -66,15 +67,20 @@ public class SphereGrid : MonoBehaviour
 
         try
         {
-            if (File.Exists(@"Assets/SphereSaves/" + inputWallPath + ".xml") &&
-                File.Exists(@"Assets/SphereSaves/isInverse-" + inputWallPath + ".xml"))
+            string inputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
+            if (File.Exists(inputPath))
             {
-                string inputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
                 using (var reader = new StreamReader(inputPath))
                 {
-                    var serializer = new XmlSerializer(typeof (bool[][]));
-                    bool[][] jaggedWallArray = (bool[][]) serializer.Deserialize(reader);
+                    var serializer = new XmlSerializer(typeof (SphereSerializable));
+                    SphereSerializable load = (SphereSerializable) serializer.Deserialize(reader);
+                    insideOut = load.InsideOut;
+                    radius = load.Radius;
+                    wallHeight = load.WallHeight;
+                    bool[][] jaggedWallArray = load.WallHereJagged;
                     wallHere = new bool[jaggedWallArray.Length, jaggedWallArray[0].Length];
+                    xSize = jaggedWallArray.Length;
+                    ySize = jaggedWallArray[0].Length;
                     for (int i = 0; i < jaggedWallArray.Length; i++)
                     {
                         for (int j = 0; j < jaggedWallArray[i].Length; j++)
@@ -82,12 +88,10 @@ public class SphereGrid : MonoBehaviour
                             wallHere[i, j] = jaggedWallArray[i][j];
                         }
                     }
-                }
-                string inverseInputPath = @"Assets/SphereSaves/isInverse-" + inputWallPath + ".xml";
-                using (var reader = new StreamReader(inverseInputPath))
-                {
-                    var serializer = new XmlSerializer(typeof (bool));
-                    insideOut = (bool) serializer.Deserialize(reader);
+                    //Transform trans
+                    transform.localPosition = load.LocalPos;
+                    transform.localEulerAngles = load.LocalEuler;
+                    transform.localScale = load.LocalScale;
                 }
             }
             else
@@ -105,6 +109,9 @@ public class SphereGrid : MonoBehaviour
         // TODO set gravity to correct direction
         return true;
     }
+    /// <summary>
+    /// This saves the current sphere if outputWallPath is defined
+    /// </summary>
     void OnDestroy()
     {
         if (outputWallPath == "")
@@ -120,19 +127,25 @@ public class SphereGrid : MonoBehaviour
                     jaggedWallArray[i][j] = wallHere[i, j];
                 }
             }
+            Vector3 pos, euler, scale;
+            pos = transform.localPosition;
+            euler = transform.localEulerAngles;
+            scale = transform.localScale;
+            SphereSerializable save = new SphereSerializable(insideOut, radius, jaggedWallArray, wallHeight, pos, euler, scale);
+
             string outputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
             using (var stream = File.Create(outputPath))
             {
-                var serializer = new XmlSerializer(typeof(bool[][]));
-                serializer.Serialize(stream, jaggedWallArray);
+                var serializer = new XmlSerializer(typeof(SphereSerializable));
+                serializer.Serialize(stream, save);
             }
 
-            string inverseOutputPath = @"Assets/SphereSaves/isInverse-" + inputWallPath + ".xml";
-            using (var stream = File.Create(inverseOutputPath))
-            {
-                var serializer = new XmlSerializer(typeof(bool));
-                serializer.Serialize(stream, insideOut);
-            }
+            //string inverseOutputPath = @"Assets/SphereSaves/isInverse-" + inputWallPath + ".xml";
+            //using (var stream = File.Create(inverseOutputPath))
+            //{
+            //    var serializer = new XmlSerializer(typeof(bool));
+            //    serializer.Serialize(stream, insideOut);
+            //}
         }
         catch (Exception)
         {
@@ -358,7 +371,7 @@ public class SphereGrid : MonoBehaviour
     
     // Given the x,y coords of two patches, add vertical wall if one is wall, one is floor
 
-    #region Old GenerateExtrude
+    #region Current GenerateExtrude
 
     private void GenerateAndExtrude()
     {

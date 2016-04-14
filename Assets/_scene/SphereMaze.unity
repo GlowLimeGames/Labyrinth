@@ -98,6 +98,7 @@ GameObject:
   - 124: {fileID: 280519652}
   - 81: {fileID: 280519651}
   - 114: {fileID: 280519656}
+  - 114: {fileID: 280519657}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -178,7 +179,7 @@ MonoBehaviour:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 280519650}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 961d343b1af622d4a97ec3992753ba36, type: 3}
   m_Name: 
@@ -190,6 +191,22 @@ MonoBehaviour:
   targetDirection: {x: 0, y: 0}
   targetCharacterDirection: {x: 0, y: 0}
   characterBody: {fileID: 0}
+--- !u!114 &280519657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 280519650}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbe8f737bbe2c3d439105521b62f2a4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cameraSensitivity: 90
+  climbSpeed: 4
+  normalMoveSpeed: 10
+  slowMoveFactor: 0.25
+  fastMoveFactor: 3
 --- !u!1 &424509471
 GameObject:
   m_ObjectHideFlags: 0
@@ -344,7 +361,19 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
       propertyPath: inputWallPath
-      value: testsphere1
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
+      propertyPath: outputWallPath
+      value: test
+      objectReference: {fileID: 0}
+    - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
+      propertyPath: wallPatternString
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 11453274, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}
+      propertyPath: insideOut
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: d5af94025d109e54494cafe052bd1fd8, type: 2}

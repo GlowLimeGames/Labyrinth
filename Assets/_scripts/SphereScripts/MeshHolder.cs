@@ -8,11 +8,10 @@ using UnityEngine.Networking;
 
 public class MeshHolder
 {
-
-    public List<Vector3> verts;
-    public List<int> tris;
-    public List<Vector3> normals;
-    public List<Vector2> uvs;
+    public List<Vector3> verts { get; set; }
+    public List<int> tris { get; set; }
+    public List<Vector3> normals { get; set; }
+    public List<Vector2> uvs { get; set; }
 
     public int nextTriIdx { get; private set; }
 
