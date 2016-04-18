@@ -26,6 +26,8 @@ public class SphereGrid : MonoBehaviour
     private MeshHolder ground;
     private MeshHolder vertWalls;
     private MeshHolder horzWalls;
+
+    private bool setupDone = false;
     
 
     private Vector3[] vertices;
@@ -33,21 +35,26 @@ public class SphereGrid : MonoBehaviour
     private bool[,] wallHere;
     private Vector3 lastClickPoint;
     private int N;
-
-    private bool lastInsideOutSetting;
+    
     #endregion
 
     #region Starting/Saving Functions
     private void Awake()
     {
-        
-        lastInsideOutSetting = insideOut;
-        if(!InputFileExists())
+        Debug.Log(String.Format("OuputWallString: {0}", outputWallPath));
+        setupDone = false;
+        if (!InputFileExists())
+        {
             SetUpWallPlan();
+            Debug.Log("Defaults");
+        }
+        else
+        {
+            Debug.Log("Went up load file");
+        }
+            
         
         GenerateAndExtrude();
-        //SphereCollider collider = GetComponent<SphereCollider>();
-        //collider.radius = (float)radius;
 
         if (insideOut)
         {
@@ -58,13 +65,16 @@ public class SphereGrid : MonoBehaviour
         if (wallPatternString == "")
             wallPatternString = "Try setting to'Test', 'All Floors', ...";
         //StartCoroutine(GenerateAndExtrude());
+        setupDone = true;
     }
 
     private bool InputFileExists()
     {
-        if (inputWallPath == "")
+        if (String.IsNullOrEmpty(inputWallPath))
+        {
+            Debug.Log("No input file");
             return false;
-
+        }
         try
         {
             string inputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
@@ -78,9 +88,10 @@ public class SphereGrid : MonoBehaviour
                     radius = load.Radius;
                     wallHeight = load.WallHeight;
                     bool[][] jaggedWallArray = load.WallHereJagged;
-                    wallHere = new bool[jaggedWallArray.Length, jaggedWallArray[0].Length];
                     xSize = jaggedWallArray.Length;
                     ySize = jaggedWallArray[0].Length;
+                    wallHere = new bool[xSize, ySize];
+                    
                     for (int i = 0; i < jaggedWallArray.Length; i++)
                     {
                         for (int j = 0; j < jaggedWallArray[i].Length; j++)
@@ -89,14 +100,14 @@ public class SphereGrid : MonoBehaviour
                         }
                     }
                     //Transform trans
-                    transform.localPosition = load.LocalPos;
-                    transform.localEulerAngles = load.LocalEuler;
-                    transform.localScale = load.LocalScale;
+                    //transform.localPosition = load.LocalPos;
+                    //transform.localEulerAngles = load.LocalEuler;
+                    //transform.localScale = load.LocalScale;
                 }
             }
             else
             {
-                Debug.Log("InputWallPaths aren't designated correctly");
+                Debug.Log(String.Format("{0} apparently doesn't exist", inputPath));
                 return false;
             }
                 
@@ -114,10 +125,16 @@ public class SphereGrid : MonoBehaviour
     /// </summary>
     void OnDestroy()
     {
-        if (outputWallPath == "")
+        if (String.IsNullOrEmpty(outputWallPath))
+        {
+            Debug.Log(String.Format("No output file: {0}", outputWallPath));
+
             return;
+        }
+            
         try
         {
+            Debug.Log("In Save try");
             bool[][] jaggedWallArray = new bool[xSize][];
             for (int i = 0; i < wallHere.GetLength(0); i++)
             {
@@ -131,13 +148,19 @@ public class SphereGrid : MonoBehaviour
             pos = transform.localPosition;
             euler = transform.localEulerAngles;
             scale = transform.localScale;
-            SphereSerializable save = new SphereSerializable(insideOut, radius, jaggedWallArray, wallHeight, pos, euler, scale);
+            SphereSerializable saveSphere = new SphereSerializable(insideOut, radius, jaggedWallArray, wallHeight, pos, euler, scale);
 
-            string outputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
+            string outputPath = @"Assets/SphereSaves/" + outputWallPath + ".xml";
             using (var stream = File.Create(outputPath))
             {
                 var serializer = new XmlSerializer(typeof(SphereSerializable));
-                serializer.Serialize(stream, save);
+                serializer.Serialize(stream, saveSphere);
+            }
+            if(!File.Exists(outputPath))
+                Debug.Log(String.Format("Output: {0} not created", outputPath));
+            else
+            {
+                Debug.Log("File saved correctly, I think");
             }
 
             //string inverseOutputPath = @"Assets/SphereSaves/isInverse-" + inputWallPath + ".xml";
@@ -555,9 +578,9 @@ public class SphereGrid : MonoBehaviour
     #region Special Functions "On_blah"
     private void OnDrawGizmos()
     {
-        if (vertices == null)
+        if (vertices == null || !setupDone)
             return;
-
+        Debug.Log(String.Format("{0) current outputFile", outputWallPath));
         Gizmos.color = Color.magenta;
         Gizmos.DrawSphere(transform.TransformPoint(lastClickPoint), (float) radius/8f);
 
@@ -593,6 +616,8 @@ public class SphereGrid : MonoBehaviour
 
     void OnMouseDown()
     {
+        if (!setupDone)
+            return; 
 
         var mousePos = Input.mousePosition;
         var hit = new RaycastHit();

@@ -12,6 +12,11 @@ public class SphereSerializable  {
     public Vector3 LocalEuler { get; set; }
     public Vector3 LocalScale { get; set; }
 
+    private SphereSerializable()
+    {
+        
+    }
+
     public SphereSerializable(bool isInverse, double radius, bool[][] wallHere, 
         float wallHeight, Vector3 localPos,  Vector3 localEuler, Vector3 localScale)
     {
