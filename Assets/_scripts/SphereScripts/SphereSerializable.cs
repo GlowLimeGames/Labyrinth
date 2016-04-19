@@ -1,13 +1,13 @@
 ﻿using UnityEngine;
 using System.Collections;
-using JetBrains.Annotations;
 
-public class SphereSerializable
-{
+
+public class SphereSerializable  {
 
     public bool InsideOut { get; set; }
     public double Radius { get; set; }
     public bool[][] WallHereJagged { get; set; }
+
     //public float WallHeight { get; set; }
     //public Vector3 LocalPos { get; set; }
     //public Vector3 LocalEuler { get; set; }
@@ -24,6 +24,7 @@ public class SphereSerializable
         InsideOut = isInverse;
         Radius = radius;
         WallHereJagged = wallHere;
+
         //WallHeight = wallHeight;
         //LocalPos = localPos;
         //LocalEuler = localEuler;
