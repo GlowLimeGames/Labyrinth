@@ -21,7 +21,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &429370
 Transform:
   m_ObjectHideFlags: 1
@@ -102,13 +102,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a9032b5b54ffa0046a79687b1cdc5c46, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  xSize: 6
-  ySize: 6
+  xSize: 40
+  ySize: 40
   radius: 8
-  insideOut: 0
-  wallHeight: 1
-  drawGizmos: 0
-  wallPatternString: half
+  insideOut: 1
+  wallHeight: 2
+  drawGizmos: 1
+  wallPatternString: 
+  inputWallPath: 
+  outputWallPath: 
   materials:
   - {fileID: 2100000, guid: 690430e482b54b245813397f49221200, type: 2}
   - {fileID: 2100000, guid: 149b1539e1f221b42a0af0a7bff82996, type: 2}

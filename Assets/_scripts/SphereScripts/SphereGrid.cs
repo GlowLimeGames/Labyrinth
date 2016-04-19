@@ -2,7 +2,9 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
+using System.Xml.Serialization;
 using UnityEngine.EventSystems;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
@@ -11,68 +13,264 @@ using UnityEngine.EventSystems;
 public class SphereGrid : MonoBehaviour
 {
 
+    #region Member Variables
     public int xSize, ySize;
     public double radius;
     public bool insideOut;
     public float wallHeight;
     public bool drawGizmos;
     public string wallPatternString;
+    public string inputWallPath;
+    public string outputWallPath;
     public Material[] materials;
+    private MeshHolder ground;
+    private MeshHolder vertWalls;
+    private MeshHolder horzWalls;
+
     private Vector3[] vertices;
-    private Vector3[] samples;
     private Mesh mesh;
     private bool[,] wallHere;
     private Vector3 lastClickPoint;
     private int N;
 
     private bool lastInsideOutSetting;
+    #endregion
 
+    #region Starting/Saving Functions
     private void Awake()
     {
         lastInsideOutSetting = insideOut;
-        SetUpWallPlan();
+        if(!InputFileExists())
+            SetUpWallPlan();
         
-        newGenerateAndExtrude();
+        GenerateAndExtrude();
 
         //SphereCollider collider = GetComponent<SphereCollider>();
         //collider.radius = (float)radius;
 
-        if (insideOut)
-        {
-            //collider.radius *= -1;
-            GetComponent<GravityAttractor>().gravity *= -1;
-        }
+        //if (insideOut)
+        //{
+        //    //collider.radius *= -1;
+        //    GetComponent<GravityAttractor>().gravity *= -1;
+        //}
 
         if (wallPatternString == "")
             wallPatternString = "Try setting to'Test', 'All Floors', ...";
         //StartCoroutine(GenerateAndExtrude());
     }
-
-    #region Wall Functions
-    private void ExtrudeWalls()
+    private bool InputFileExists()
     {
-        for (int y = 0; y < ySize; y++)
+        if (inputWallPath == "")
         {
-            for (int x = 0; x < xSize; x++)
+            Debug.Log("No input path");
+            return false;
+        }
+        try
+        {
+            string inputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
+            if (File.Exists(inputPath))
             {
-                if (wallHere[x, y])
+                using (var reader = new StreamReader(inputPath))
                 {
-                    int i = 2 * x + (4 * xSize) * y;
-                    int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-                    foreach (int idx in idxs)
+                    var serializer = new XmlSerializer(typeof(SphereSerializable));
+                    var loadedSphere = (SphereSerializable)serializer.Deserialize(reader);
+                    insideOut = loadedSphere.InsideOut;
+                    radius = loadedSphere.Radius;
+
+                    bool[][] jaggedWallArray = loadedSphere.WallHereJagged;
+                    xSize = jaggedWallArray.Length;
+                    ySize = jaggedWallArray[0].Length;
+                    wallHere = new bool[xSize, ySize];
+                    for (int i = 0; i < xSize; i++)
                     {
-                        Vector3 extrudeDir = vertices[idx].normalized;
-                        extrudeDir *= wallHeight;
-                        if (insideOut)
-                            extrudeDir *= -1;
-                        vertices[idx] = vertices[idx] + extrudeDir;
+                        for (int j = 0; j < ySize; j++)
+                        {
+                            wallHere[i, j] = jaggedWallArray[i][j];
+                        }
                     }
                 }
             }
-        }
-        mesh.vertices = vertices;
-        mesh.RecalculateBounds();
+            else
+            {
+                Debug.Log("InputWallPaths aren't designated correctly");
+                return false;
+            }
 
+        }
+        catch (Exception e)
+        {
+            Debug.Log(String.Format("Input File invalid - Error: {0}", e.Message));
+            return false;
+        }
+       
+        return true;
+    }
+    void OnDestroy()
+    {
+        if (String.IsNullOrEmpty(outputWallPath))
+        {
+            Debug.Log("No output path");
+            return;
+        }
+        try
+        {
+            bool[][] jaggedWallArray = new bool[xSize][];
+            for (int i = 0; i < wallHere.GetLength(0); i++)
+            {
+                jaggedWallArray[i] = new bool[wallHere.GetLength(1)];
+                for (int j = 0; j < wallHere.GetLength(1); j++)
+                {
+                    jaggedWallArray[i][j] = wallHere[i, j];
+                }
+            }
+            SphereSerializable saveMe = new SphereSerializable(insideOut, radius, jaggedWallArray);
+            string outputPath = @"Assets/SphereSaves/" + outputWallPath + ".xml";
+            using (var stream = File.Create(outputPath))
+            {
+                var serializer = new XmlSerializer(typeof(SphereSerializable));
+                serializer.Serialize(stream, saveMe);
+            }
+            if (File.Exists(outputPath))
+            {
+                Debug.Log("File created successfully");
+            }
+            else
+            {
+                Debug.Log("File not created successfully");
+            }
+        }
+        catch (Exception)
+        {
+            Debug.Log("Problem saving file");
+        }
+    }
+
+    #region Old Save/Load
+    private bool oldInputFileExists()
+    {
+        if (inputWallPath == "")
+            return false;
+
+        try
+        {
+            if (File.Exists(@"Assets/SphereSaves/" + inputWallPath + ".xml") &&
+                File.Exists(@"Assets/SphereSaves/isInverse-" + inputWallPath + ".xml"))
+            {
+                string inputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
+                using (var reader = new StreamReader(inputPath))
+                {
+                    var serializer = new XmlSerializer(typeof (bool[][]));
+                    bool[][] jaggedWallArray = (bool[][]) serializer.Deserialize(reader);
+                    wallHere = new bool[jaggedWallArray.Length, jaggedWallArray[0].Length];
+                    for (int i = 0; i < jaggedWallArray.Length; i++)
+                    {
+                        for (int j = 0; j < jaggedWallArray[i].Length; j++)
+                        {
+                            wallHere[i, j] = jaggedWallArray[i][j];
+                        }
+                    }
+                }
+                string inverseInputPath = @"Assets/SphereSaves/isInverse-" + inputWallPath + ".xml";
+                using (var reader = new StreamReader(inverseInputPath))
+                {
+                    var serializer = new XmlSerializer(typeof (bool));
+                    insideOut = (bool) serializer.Deserialize(reader);
+                }
+            }
+            else
+            {
+                Debug.Log("InputWallPaths aren't designated correctly");
+                return false;
+            }
+                
+        }
+        catch (Exception e)
+        {
+            Debug.Log(String.Format("Input File invalid - Error: {0}",e.Message));
+            return false;
+        }
+        // TODO set gravity to correct direction
+        return true;
+    }
+    void oldOnDestroy()
+    {
+        if (outputWallPath == "")
+            return;
+        try
+        {
+            bool[][] jaggedWallArray = new bool[xSize][];
+            for (int i = 0; i < wallHere.GetLength(0); i++)
+            {
+                jaggedWallArray[i] = new bool[wallHere.GetLength(1)];
+                for (int j = 0; j < wallHere.GetLength(1); j++)
+                {
+                    jaggedWallArray[i][j] = wallHere[i, j];
+                }
+            }
+            string outputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
+            using (var stream = File.Create(outputPath))
+            {
+                var serializer = new XmlSerializer(typeof(bool[][]));
+                serializer.Serialize(stream, jaggedWallArray);
+            }
+
+            string inverseOutputPath = @"Assets/SphereSaves/isInverse-" + inputWallPath + ".xml";
+            using (var stream = File.Create(inverseOutputPath))
+            {
+                var serializer = new XmlSerializer(typeof(bool));
+                serializer.Serialize(stream, insideOut);
+            }
+        }
+        catch (Exception)
+        {
+            Debug.Log("Problem saving file");
+
+            throw;
+        }
+
+    }
+    #endregion
+    #endregion
+
+    #region Wall Functions
+    //private void ExtrudeWalls()
+    //{
+    //    for (int y = 0; y < ySize; y++)
+    //    {
+    //        for (int x = 0; x < xSize; x++)
+    //        {
+    //            if (wallHere[x, y])
+    //            {
+    //                int i = 2 * x + (4 * xSize) * y;
+    //                int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
+    //                foreach (int idx in idxs)
+    //                {
+    //                    Vector3 extrudeDir = vertices[idx].normalized;
+    //                    extrudeDir *= wallHeight;
+    //                    if (insideOut)
+    //                        extrudeDir *= -1;
+    //                    vertices[idx] = vertices[idx] + extrudeDir;
+    //                }
+    //            }
+    //        }
+    //    }
+    //    mesh.vertices = vertices;
+    //    mesh.RecalculateBounds();
+    //}
+
+    private bool IsWall(int x, int y)
+    {
+        x = (x + xSize)%xSize;
+        return wallHere[x, y];
+    }
+
+    private void ExtrudePoint(ref Vector3 point)
+    {
+        Vector3 extrudeDir = point.normalized;
+        extrudeDir *= wallHeight;
+        if (insideOut)
+            extrudeDir *= -1;
+        point += extrudeDir;
     }
     
     void SetUpWallPlan()
@@ -119,7 +317,6 @@ public class SphereGrid : MonoBehaviour
             }
         }
     }
-
     void SetTestWallPlan()
     {
         wallHere = new bool[xSize,ySize];
@@ -139,257 +336,267 @@ public class SphereGrid : MonoBehaviour
     }
     #endregion
 
-    private void newGenerateAndExtrude()
-    {
-        // TODO Create walls, perhaps using dictionary to help
+    //private void newGenerateAndExtrude()
+    //{
+    //    // TODO Create walls, perhaps using dictionary to help
 
+    //    GetComponent<MeshFilter>().mesh = mesh = new Mesh();
+    //    mesh.Clear();
+    //    // TODO add multiple materials for ground/floors etc
+    //    GetComponent<Renderer>().materials = materials;
+    //    mesh.name = "Procedural Grid";
+
+    //    N = 4*xSize*ySize;
+    //    vertices = new Vector3[4 * xSize * ySize]; // 4 vertices per square
+    //    Vector3[] normals = new Vector3[vertices.Length];
+    //    //int[] triangles = new int[xSize * ySize * 6];
+    //    List<int> triangleGroundList = new List<int>();
+    //    List<int> triangleWallList = new List<int>();
+    //    double deltaPhi = 2*Math.PI/xSize;
+    //    double deltaTheta = Math.PI/ySize;
+    //    double r = radius;
+
+    //    // Set vertices
+    //    for (int y = 0; y < ySize; y++)
+    //    {
+    //        for (int x = 0; x < xSize; x++)
+    //        {
+    //            int i = 2*x + (4*xSize)*y;
+    //            double phi = 2*Math.PI*x/xSize; // X angle
+    //            double theta = Math.PI*y/ySize; // Y angle 
+    //            // Boxes are arranged 0 1 2    Each Square idx is arranged  0 1
+    //            //                    3 4 5                                 2 3
+    //            // Vertex 0
+    //            vertices[i] = new Vector3(               
+    //                (float) (r*Math.Sin(theta)*Math.Cos(phi)),
+    //                (float) (r*Math.Cos(theta)),                
+    //                (float) (r*Math.Sin(theta)*Math.Sin(phi)));
+    //            // Vertex 1
+    //            vertices[i + 1] = new Vector3(
+    //                (float) (r*Math.Sin(theta)*Math.Cos(phi + deltaPhi)),
+    //                (float) (r*Math.Cos(theta)),
+    //                (float) (r*Math.Sin(theta)*Math.Sin(phi + deltaPhi)));
+    //            // Vertex 2
+    //            vertices[i + 2*xSize] = new Vector3(
+    //                (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
+    //                (float)(r * Math.Cos(theta + deltaTheta)),
+    //                (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+    //            // Vertex 3
+    //            vertices[i + 1 + 2*xSize] = new Vector3(
+    //                (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
+    //                (float)(r * Math.Cos(theta + deltaTheta)),
+    //                (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
+
+    //            // Triangle Idx of top left corner of current square
+    //            // int ti = 6 * x + (6 * xSize) * y;
+    //            int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
+    //            int TL = i;
+    //            int TR = i + 1;
+    //            int BL = i + 2 * xSize;
+    //            int BR = i + 2 * xSize + 1;
+    //            // Add both triangles, reversing order if inside out. 
+    //            // TODO add normals to this
+    //            AddTriangleToList(triangleGroundList, TL, TR, BR, insideOut);
+    //            AddTriangleToList(triangleGroundList, TL, BR, BL, insideOut);
+
+    //            // Add walls between this square and square to left
+    //            AddLatitudeWall(triangleWallList, (x-1), y, x, y);
+    //            // Add walls between this square and square above (towards north pole)
+    //            if (y > 0) // Don't add if at north pole
+    //                AddLongitudeWall(triangleWallList, x, (y - 1), x, y);
+
+    //        }
+    //    }
+    //    for (int vIdx = 0; vIdx < vertices.Length; vIdx++)
+    //    {
+    //        // Find the direction from center to vertex, and if insideOut reverse it towards center
+    //        Vector3 normal = vertices[vIdx] * (insideOut ? -1 : 1);
+    //        normal.Normalize();
+    //        normals[vIdx] = normal;
+    //    }
+    //    //for (int t = 0; t < triangleGroundList.Count; t++)
+    //    //{
+    //    //    Debug.Log(String.Format("{0} -> {1}", t, triangleGroundList[t]));
+    //    //}
+
+    //    mesh.vertices = vertices;
+    //    mesh.normals = normals;
+    //    int subMeshCount = 0;
+    //    mesh.subMeshCount = 2;
+    //    if (triangleGroundList.Count > 0)
+    //    {
+    //        mesh.SetTriangles(triangleGroundList, 0);
+    //    }
+    //    if (triangleWallList.Count > 0)
+    //    {
+    //        mesh.SetTriangles(triangleWallList, 2);
+    //        Debug.Log(String.Format("wall count {0}", triangleWallList.Count/6));
+    //    }
+    //    else
+    //    {
+    //        Debug.Log(String.Format("f-wall count {0}", triangleWallList.Count / 6));
+    //    }
+    //    //mesh.subMeshCount = subMeshCount;
+
+    //    //ExtrudeWalls();
+    //    var meshc = GetComponent<MeshCollider>();
+    //    meshc.sharedMesh = mesh;
+    //    return;
+    //}
+    
+    // Given the x,y coords of two patches, add vertical wall if one is wall, one is floor
+
+    #region Old GenerateExtrude
+
+    private void GenerateAndExtrude()
+    {
         GetComponent<MeshFilter>().mesh = mesh = new Mesh();
         mesh.Clear();
         // TODO add multiple materials for ground/floors etc
         GetComponent<Renderer>().materials = materials;
-        mesh.name = "Procedural Grid";
+        mesh.name = "Procedural Sphere";
 
-        N = 4*xSize*ySize;
-        vertices = new Vector3[4 * xSize * ySize]; // 4 vertices per square
-        Vector3[] normals = new Vector3[vertices.Length];
-        //int[] triangles = new int[xSize * ySize * 6];
-        List<int> triangleGroundList = new List<int>();
-        List<int> triangleWallList = new List<int>();
-        double deltaPhi = 2*Math.PI/xSize;
-        double deltaTheta = Math.PI/ySize;
-        double r = radius;
+        N = 4 * xSize * ySize;
 
-        // Set vertices
-        for (int y = 0; y < ySize; y++)
-        {
-            for (int x = 0; x < xSize; x++)
-            {
-                int i = 2*x + (4*xSize)*y;
-                double phi = 2*Math.PI*x/xSize; // X angle
-                double theta = Math.PI*y/ySize; // Y angle 
-                // Boxes are arranged 0 1 2    Each Square idx is arranged  0 1
-                //                    3 4 5                                 2 3
-                // Vertex 0
-                vertices[i] = new Vector3(               
-                    (float) (r*Math.Sin(theta)*Math.Cos(phi)),
-                    (float) (r*Math.Cos(theta)),                
-                    (float) (r*Math.Sin(theta)*Math.Sin(phi)));
-                // Vertex 1
-                vertices[i + 1] = new Vector3(
-                    (float) (r*Math.Sin(theta)*Math.Cos(phi + deltaPhi)),
-                    (float) (r*Math.Cos(theta)),
-                    (float) (r*Math.Sin(theta)*Math.Sin(phi + deltaPhi)));
-                // Vertex 2
-                vertices[i + 2*xSize] = new Vector3(
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
-                    (float)(r * Math.Cos(theta + deltaTheta)),
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
-                // Vertex 3
-                vertices[i + 1 + 2*xSize] = new Vector3(
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
-                    (float)(r * Math.Cos(theta + deltaTheta)),
-                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
-
-                // Triangle Idx of top left corner of current square
-                // int ti = 6 * x + (6 * xSize) * y;
-                int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-                int TL = i;
-                int TR = i + 1;
-                int BL = i + 2 * xSize;
-                int BR = i + 2 * xSize + 1;
-                // Add both triangles, reversing order if inside out. 
-                // TODO add normals to this
-                AddTriangleToList(triangleGroundList, TL, TR, BR, insideOut);
-                AddTriangleToList(triangleGroundList, TL, BR, BL, insideOut);
-
-                // Add walls between this square and square to left
-                AddLatitudeWall(triangleWallList, (x-1), y, x, y);
-                // Add walls between this square and square above (towards north pole)
-                if (y > 0) // Don't add if at north pole
-                    AddLongitudeWall(triangleWallList, x, (y - 1), x, y);
-
-            }
-        }
-        for (int vIdx = 0; vIdx < vertices.Length; vIdx++)
-        {
-            // Find the direction from center to vertex, and if insideOut reverse it towards center
-            Vector3 normal = vertices[vIdx] * (insideOut ? -1 : 1);
-            normal.Normalize();
-            normals[vIdx] = normal;
-        }
-        //for (int t = 0; t < triangleGroundList.Count; t++)
-        //{
-        //    Debug.Log(String.Format("{0} -> {1}", t, triangleGroundList[t]));
-        //}
-
-        mesh.vertices = vertices;
-        mesh.normals = normals;
-        int subMeshCount = 0;
-        mesh.subMeshCount = 2;
-        if (triangleGroundList.Count > 0)
-        {
-            mesh.SetTriangles(triangleGroundList, 0);
-        }
-        if (triangleWallList.Count > 0)
-        {
-            mesh.SetTriangles(triangleWallList, 2);
-            Debug.Log(String.Format("wall count {0}", triangleWallList.Count/6));
-        }
-        else
-        {
-            Debug.Log(String.Format("f-wall count {0}", triangleWallList.Count / 6));
-        }
-        //mesh.subMeshCount = subMeshCount;
-
-        ExtrudeWalls();
-        var meshc = GetComponent<MeshCollider>();
-        meshc.sharedMesh = mesh;
-        return;
-    }
-    // Given the x,y coords of two patches, add vertical wall if one is wall, one is floor
-    private void AddLatitudeWall(List<int> triList, int leftSquareX, int leftSquareY, int rightSquareX, int rightSquareY)
-    {
-        // TODO Verify
-        leftSquareX = (leftSquareX + xSize)%xSize;
-        //Debug.Log(String.Format("Lx {0} Ly {1} Rx {2} Ry{3}", leftSquareX, leftSquareY, rightSquareX, rightSquareY));
-        bool leftType = wallHere[leftSquareX, leftSquareY];
-        bool rightType = wallHere[rightSquareX, rightSquareY];
-        // Don't add wall between if they're both walls/floor
-        if (leftType == rightType) 
-            return;
-        // Idx of top left vertex for left Square
-        int leftVertIdx = 2 * leftSquareX + (4 * xSize) * leftSquareY;
-        int left_TR_vert = leftVertIdx + 1;
-        int left_BR_vert = leftVertIdx + 1 + 2*xSize;
-        int rightVertIdx = 2 * rightSquareX + (4 * xSize) * rightSquareY;
-        int right_TL_vert = rightVertIdx;
-        int right_BL_vert = rightVertIdx + 2 * xSize;
-        //int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-        AddTriangleToList(triList, left_BR_vert, left_TR_vert, right_TL_vert, insideOut);
-        AddTriangleToList(triList, left_BR_vert, right_TL_vert, right_BL_vert, insideOut);
-    }
-    // Given the x,y coords of two patches, add vertical wall if one is wall, one is floor
-    private void AddLongitudeWall(List<int> triList, int topSquareX, int topSquareY, int bottomSquareX, int bottomSquareY)
-    {
-        // TODO Verify
-        
-        bool topType = wallHere[topSquareX, topSquareY];
-        bool botType = wallHere[bottomSquareX, bottomSquareY];
-        // Don't add wall between if they're both walls/floor
-        if (topType == botType)
-            return;
-        // Idx of top left vertex for left Square
-        int topVertIdx = 2 * topSquareX + (4 * xSize) * topSquareY;
-        int top_BL_vert = topVertIdx + 2 * xSize;
-        int top_BR_vert = topVertIdx + 2*xSize + 1;
-        int botVertIdx = 2 * bottomSquareX + (4 * xSize) * bottomSquareY;
-        int bot_TL_vert = botVertIdx;
-        int bot_TR_vert = botVertIdx + 1;
-        //int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-        AddTriangleToList(triList, top_BL_vert, top_BR_vert, bot_TR_vert, insideOut);
-        AddTriangleToList(triList, top_BL_vert, bot_TR_vert, bot_TL_vert, insideOut);
-    }
-    private void AddTriangleToList(List<int> triList, int tri1, int tri2, int tri3, bool reverse)
-    {
-        if (reverse)
-        {
-            triList.Add(tri3);
-            triList.Add(tri2);
-            triList.Add(tri1);
-        }
-        else
-        {
-            triList.Add(tri1);
-            triList.Add(tri2);
-            triList.Add(tri3);
-        }
-    }
-
-    #region Old GenerateExtrude
-    private void GenerateAndExtrude()
-    {
-        // TODO Create walls, perhaps using dictionary to help
-
-        GetComponent<MeshFilter>().mesh = mesh = new Mesh();
-
-        mesh.name = "Procedural Grid";
-
-        vertices = new Vector3[4 * xSize * ySize]; // 4 vertices per square
-        Vector3[] normals = new Vector3[vertices.Length];
-        int[] triangles = new int[xSize * ySize * 6];
+        // Used to calculate angle of verts relative to top-left vert
         double deltaPhi = 2 * Math.PI / xSize;
         double deltaTheta = Math.PI / ySize;
         double r = radius;
+
+        // Create a ground meshholder first and fill it with verts,tris, normals
+        ground = new MeshHolder(0);
         for (int y = 0; y < ySize; y++)
         {
             for (int x = 0; x < xSize; x++)
             {
-                int i = 2 * x + (4 * xSize) * y;
                 double phi = 2 * Math.PI * x / xSize; // X angle
                 double theta = Math.PI * y / ySize; // Y angle 
-                // Boxes are arranged 0 1 2    Each Square idx is arranged  0 1
-                //                    3 4 5                                 2 3
-                // Vertex 0
-                vertices[i] = new Vector3(
-                    (float)(r * Math.Sin(theta) * Math.Cos(phi)),
-                    (float)(r * Math.Cos(theta)),
-                    (float)(r * Math.Sin(theta) * Math.Sin(phi)));
-                // Vertex 1
-                vertices[i + 1] = new Vector3(
-                    (float)(r * Math.Sin(theta) * Math.Cos(phi + deltaPhi)),
-                    (float)(r * Math.Cos(theta)),
-                    (float)(r * Math.Sin(theta) * Math.Sin(phi + deltaPhi)));
-                // Vertex 2
-                vertices[i + 2 * xSize] = new Vector3(
+
+                var p0 = new Vector3( // Add TL vert
+                    (float) (r*Math.Sin(theta)*Math.Cos(phi)), // "X"
+                    (float) (r*Math.Cos(theta)), // Up Directions "Z"
+                    (float) (r*Math.Sin(theta)*Math.Sin(phi)));// "Y"
+                var p1 = new Vector3( // Add TR vert
+                    (float) (r*Math.Sin(theta)*Math.Cos(phi + deltaPhi)),
+                    (float) (r*Math.Cos(theta)),
+                    (float) (r*Math.Sin(theta)*Math.Sin(phi + deltaPhi)));
+                var p2 = new Vector3( // Add BL vert
+                    (float) (r*Math.Sin(theta + deltaTheta)*Math.Cos(phi)),
+                    (float) (r*Math.Cos(theta + deltaTheta)),
+                    (float) (r*Math.Sin(theta + deltaTheta)*Math.Sin(phi)));
+                var p3 = new Vector3( // Add BR vert
+                    (float) (r*Math.Sin(theta + deltaTheta)*Math.Cos(phi + deltaPhi)),
+                    (float) (r*Math.Cos(theta + deltaTheta)),
+                    (float) (r*Math.Sin(theta + deltaTheta)*Math.Sin(phi + deltaPhi)));
+                if (IsWall(x, y))
+                {
+                    ExtrudePoint(ref p0);
+                    ExtrudePoint(ref p1);
+                    ExtrudePoint(ref p2);
+                    ExtrudePoint(ref p3);
+                }
+                ground.AddSquare(p0, p1, p2, p3, insideOut);
+            }
+        }
+        //We we know how many verts that there are. Start filling the vertical wall holder
+        horzWalls = new MeshHolder(ground.nextTriIdx);
+        for (int y = 0; y < ySize - 1; y++)
+        {
+            for (int x = 0; x < xSize; x++)
+            {
+                double phi = 2 * Math.PI * x / xSize; // X angle
+                double theta = Math.PI * y / ySize; // Y angle 
+
+                var top_BL = new Vector3( // Add BL vert
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
-                // Vertex 3
-                vertices[i + 1 + 2 * xSize] = new Vector3(
+                var top_BR = new Vector3( // Add BR vert
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
 
-                // Triangle Idx of top left corner of current square
-                int ti = 6 * x + (6 * xSize) * y;
-                if (insideOut)
+                if (IsWall(x, y))
                 {
-                    int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-                    triangles[ti] = triangles[ti + 3] = idxs[0];
-                    triangles[ti + 1] = triangles[ti + 5] = idxs[3];
-                    triangles[ti + 2] = idxs[1];
-                    triangles[ti + 4] = idxs[2];
+                    ExtrudePoint(ref top_BL);
+                    ExtrudePoint(ref top_BR);
                 }
-                else
+                var bot_TL = new Vector3( // Add BL vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
+                    (float)(r * Math.Cos(theta + deltaTheta)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                var bot_TR = new Vector3( // Add BR vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
+                    (float)(r * Math.Cos(theta + deltaTheta)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
+                if (IsWall(x, y + 1))
                 {
-                    int[] idxs = { i, i + 1, i + 2 * xSize, i + 1 + 2 * xSize };
-                    triangles[ti] = triangles[ti + 3] = idxs[0];
-                    triangles[ti + 1] = idxs[1];
-                    triangles[ti + 2] = triangles[ti + 4] = idxs[3];
-                    triangles[ti + 5] = idxs[2];
+                    ExtrudePoint(ref bot_TL);
+                    ExtrudePoint(ref bot_TR);
                 }
-
+                horzWalls.AddSquare(top_BL, top_BR, bot_TL, bot_TR, insideOut);
             }
         }
-        for (int vIdx = 0; vIdx < vertices.Length; vIdx++)
-        {
-            // Find the direction from center to vertex, and if insideOut reverse it towards center
-            Vector3 normal = vertices[vIdx] * (insideOut ? -1 : 1);
-            normal.Normalize();
-            normals[vIdx] = normal;
-        }
-        //for (int t = 0; t < triangles.Length; t++)
-        //{
-        //    Debug.Log(String.Format("{0} -> {1}", t, triangles[t]));
-        //}
-        mesh.vertices = vertices;
-        mesh.normals = normals;
-        mesh.triangles = triangles;
 
-        ExtrudeWalls();
+        //We we know how many verts that there are.Start filling the vertical wall holder
+        //vertWalls = new MeshHolder(ground.nextTriIdx);
+        for (int y = 0; y < ySize; y++)
+        {
+            for (int x = 0; x < xSize; x++)
+            {
+                double phi = 2 * Math.PI * x / xSize; // X angle
+                double theta = Math.PI * y / ySize; // Y angle 
+
+                var left_TR = new Vector3( // Add TL vert
+                    (float)(r * Math.Sin(theta) * Math.Cos(phi)),
+                    (float)(r * Math.Cos(theta)),
+                    (float)(r * Math.Sin(theta) * Math.Sin(phi)));
+                var left_BR = new Vector3( // Add BL vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
+                    (float)(r * Math.Cos(theta + deltaTheta)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                if (IsWall(x - 1, y))
+                {
+                    ExtrudePoint(ref left_TR);
+                    ExtrudePoint(ref left_BR);
+                }
+                var right_TL = new Vector3( // Add TL vert
+                    (float)(r * Math.Sin(theta) * Math.Cos(phi)),
+                    (float)(r * Math.Cos(theta)),
+                    (float)(r * Math.Sin(theta) * Math.Sin(phi)));
+                var right_BL = new Vector3( // Add BL vert
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
+                    (float)(r * Math.Cos(theta + deltaTheta)),
+                    (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                if (IsWall(x, y))
+                {
+                    ExtrudePoint(ref right_TL);
+                    ExtrudePoint(ref right_BL);
+                }
+                //vertWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
+                horzWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
+            }
+        }
+
+        //ground.verts.AddRange(vertWalls.verts);
+        ground.verts.AddRange(horzWalls.verts);
+        //ground.normals.AddRange(vertWalls.normals);
+        ground.normals.AddRange(horzWalls.normals);
+
+        
+        mesh.SetVertices(ground.verts);
+        mesh.SetNormals(ground.normals);
+
+        mesh.subMeshCount = 2;
+        mesh.SetTriangles(ground.tris, 0);
+        //mesh.SetTriangles(vertWalls.tris, 1);
+        //mesh.SetTriangles(horzWalls.tris, 2);
+        mesh.SetTriangles(horzWalls.tris, 1);
+
+
         var meshc = GetComponent<MeshCollider>();
         meshc.sharedMesh = mesh;
-        return;
+        
 
         #region Scrap Code
 
@@ -417,9 +624,9 @@ public class SphereGrid : MonoBehaviour
         #endregion
 
     }
+
     #endregion
-
-
+    
     #region Special Functions "On_blah"
     private void OnDrawGizmos()
     {
@@ -461,7 +668,6 @@ public class SphereGrid : MonoBehaviour
 
     void OnMouseDown()
     {
-        
 
         var mousePos = Input.mousePosition;
         var hit = new RaycastHit();
@@ -477,27 +683,32 @@ public class SphereGrid : MonoBehaviour
             Debug.Log(String.Format("MouseP {0} ClickP {1} RelP {2} RelDir {3}",
                 mousePos, clickPos, relativePos, relativeDir));
 
+
             // TODO Convert into angles using my spherical coordinates
-        }
-    }
-    
+            double deltaPhi = 2 * Math.PI / xSize;
+            double deltaTheta = Math.PI / ySize;
+            //var p0 = new Vector3( // Add TL vert
+            //(float)(r * Math.Sin(theta) * Math.Cos(phi)), // "X" According to wikipedia convention
+            //(float)(r * Math.Cos(theta)), // Up Directions   "Z"
+            //(float)(r * Math.Sin(theta) * Math.Sin(phi)));// "Y"
+            float x, y, z;
+            x = relativeDir.x; y = relativeDir.z; z = relativeDir.y;
+            double theta = Math.Acos(z);
+            double phi = Math.Atan(y/x);
 
-    public void OnSelect(BaseEventData eventData)
-    {
-        Debug.Log("Selected");
-       
-        if (lastInsideOutSetting != insideOut)
-        {
-            lastInsideOutSetting = insideOut;
-            GenerateAndExtrude();
-            Debug.Log("Changed settings");
-        }
-    }
+            int xCoord = (int)Math.Floor(phi/deltaPhi);
+            xCoord = (xCoord + xSize)%xSize;
+            int yCoord = (int)Math.Floor(theta/deltaTheta);
+            
 
-    void OnDestroy()
-    {
-        vertices = null;
+            Debug.Log(String.Format("X Y {0} {1}", xCoord, yCoord));
+            if (xCoord >= 0 && xCoord < xSize && yCoord >= 0 && yCoord < ySize)
+            {
+                Debug.Log("Successful placement");
+                wallHere[xCoord, yCoord] = !wallHere[xCoord, yCoord];
+                GenerateAndExtrude();
+            }
+        }
     }
     #endregion
-
 }
