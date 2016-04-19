@@ -25,16 +25,16 @@ public class GravityControl : MonoBehaviour {
     
     void changeGravity()
     {
-        if (Input.GetButton("Fire1") && isOn == true) {
-            gravity = 0;
-            isOn = false;
-            Debug.Log("Should be off");
-        }
-        if (Input.GetButton("Fire1") && isOn == false) {
-            gravity = 9.81f;
-            isOn = true;
-            Debug.Log("Should be on!");
-                }
+        //if (Input.GetButton("Fire1") && isOn == true) {
+        //    gravity = 0;
+        //    isOn = false;
+        //    Debug.Log("Should be off");
+        //}
+        //if (Input.GetButton("Fire1") && isOn == false) {
+        //    gravity = 9.81f;
+        //    isOn = true;
+        //    Debug.Log("Should be on!");
+        //        }
 
 
     }

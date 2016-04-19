@@ -3,8 +3,20 @@ using System.Collections;
 
 public class GravityAttractor : MonoBehaviour
 {
-    public float gravity = -10f;
-    
+    public float gravity = -10;
+    public bool insideOut = false;
+    public TestSphereGrid sphereGrid;
+
+
+    void Awake() {
+        sphereGrid = GetComponent<TestSphereGrid>();
+        insideOut = sphereGrid.insideOut;
+        if (insideOut)
+        {
+            gravity = gravity * -1;
+        }
+
+    }
 
     public void Attract(Transform body)
     {
