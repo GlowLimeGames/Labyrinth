@@ -48,18 +48,105 @@ public class SphereGrid : MonoBehaviour
         //SphereCollider collider = GetComponent<SphereCollider>();
         //collider.radius = (float)radius;
 
-        if (insideOut)
-        {
-            //collider.radius *= -1;
-            GetComponent<GravityAttractor>().gravity *= -1;
-        }
+        //if (insideOut)
+        //{
+        //    //collider.radius *= -1;
+        //    GetComponent<GravityAttractor>().gravity *= -1;
+        //}
 
         if (wallPatternString == "")
             wallPatternString = "Try setting to'Test', 'All Floors', ...";
         //StartCoroutine(GenerateAndExtrude());
     }
-
     private bool InputFileExists()
+    {
+        if (inputWallPath == "")
+        {
+            Debug.Log("No input path");
+            return false;
+        }
+        try
+        {
+            string inputPath = @"Assets/SphereSaves/" + inputWallPath + ".xml";
+            if (File.Exists(inputPath))
+            {
+                using (var reader = new StreamReader(inputPath))
+                {
+                    var serializer = new XmlSerializer(typeof(SphereSerializable));
+                    var loadedSphere = (SphereSerializable)serializer.Deserialize(reader);
+                    insideOut = loadedSphere.InsideOut;
+                    radius = loadedSphere.Radius;
+
+                    bool[][] jaggedWallArray = loadedSphere.WallHereJagged;
+                    xSize = jaggedWallArray.Length;
+                    ySize = jaggedWallArray[0].Length;
+                    wallHere = new bool[xSize, ySize];
+                    for (int i = 0; i < xSize; i++)
+                    {
+                        for (int j = 0; j < ySize; j++)
+                        {
+                            wallHere[i, j] = jaggedWallArray[i][j];
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Debug.Log("InputWallPaths aren't designated correctly");
+                return false;
+            }
+
+        }
+        catch (Exception e)
+        {
+            Debug.Log(String.Format("Input File invalid - Error: {0}", e.Message));
+            return false;
+        }
+       
+        return true;
+    }
+    void OnDestroy()
+    {
+        if (String.IsNullOrEmpty(outputWallPath))
+        {
+            Debug.Log("No output path");
+            return;
+        }
+        try
+        {
+            bool[][] jaggedWallArray = new bool[xSize][];
+            for (int i = 0; i < wallHere.GetLength(0); i++)
+            {
+                jaggedWallArray[i] = new bool[wallHere.GetLength(1)];
+                for (int j = 0; j < wallHere.GetLength(1); j++)
+                {
+                    jaggedWallArray[i][j] = wallHere[i, j];
+                }
+            }
+            SphereSerializable saveMe = new SphereSerializable(insideOut, radius, jaggedWallArray);
+            string outputPath = @"Assets/SphereSaves/" + outputWallPath + ".xml";
+            using (var stream = File.Create(outputPath))
+            {
+                var serializer = new XmlSerializer(typeof(SphereSerializable));
+                serializer.Serialize(stream, saveMe);
+            }
+            if (File.Exists(outputPath))
+            {
+                Debug.Log("File created successfully");
+            }
+            else
+            {
+                Debug.Log("File not created successfully");
+            }
+        }
+        catch (Exception)
+        {
+            Debug.Log("Problem saving file");
+        }
+    }
+
+    #region Old Save/Load
+    private bool oldInputFileExists()
     {
         if (inputWallPath == "")
             return false;
@@ -105,7 +192,7 @@ public class SphereGrid : MonoBehaviour
         // TODO set gravity to correct direction
         return true;
     }
-    void OnDestroy()
+    void oldOnDestroy()
     {
         if (outputWallPath == "")
             return;
@@ -142,6 +229,7 @@ public class SphereGrid : MonoBehaviour
         }
 
     }
+    #endregion
     #endregion
 
     #region Wall Functions
