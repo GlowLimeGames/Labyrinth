@@ -23,7 +23,6 @@ public class SphereGrid : MonoBehaviour
     public string wallPatternString;
     public string inputWallPath;
     public string outputWallPath;
-    public Material[] materials;
     private MeshHolder ground;
     private MeshHolder vertWalls;
     private MeshHolder horzWalls;
@@ -465,7 +464,7 @@ public class SphereGrid : MonoBehaviour
         GetComponent<MeshFilter>().mesh = mesh = new Mesh();
         mesh.Clear();
         // TODO add multiple materials for ground/floors etc
-        GetComponent<Renderer>().materials = materials;
+        //GetComponent<Renderer>().materials = materials;
         mesh.name = "Procedural Sphere";
 
         // Used to calculate angle of verts relative to top-left vert
@@ -505,7 +504,7 @@ public class SphereGrid : MonoBehaviour
                     ExtrudePoint(ref p2);
                     ExtrudePoint(ref p3);
                 }
-                ground.AddSquare(p0, p1, p2, p3, insideOut);
+                ground.AddSquare(p0, p1, p2, p3, insideOut, true);
             }
         }
         //We we know how many verts that there are. Start filling the vertical wall holder
@@ -544,7 +543,7 @@ public class SphereGrid : MonoBehaviour
                     ExtrudePoint(ref bot_TL);
                     ExtrudePoint(ref bot_TR);
                 }
-                horzWalls.AddSquare(top_BL, top_BR, bot_TL, bot_TR, insideOut);
+                horzWalls.AddSquare(top_BL, top_BR, bot_TL, bot_TR, insideOut, false);
             }
         }
 
@@ -584,7 +583,7 @@ public class SphereGrid : MonoBehaviour
                     ExtrudePoint(ref right_BL);
                 }
                 //vertWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
-                horzWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
+                horzWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut, false);
             }
         }
 
@@ -596,6 +595,7 @@ public class SphereGrid : MonoBehaviour
         
         mesh.SetVertices(ground.verts);
         mesh.SetNormals(ground.normals);
+        //mesh.RecalculateNormals();
 
         mesh.subMeshCount = 2;
         mesh.SetTriangles(ground.tris, 0);
@@ -640,21 +640,17 @@ public class SphereGrid : MonoBehaviour
     #region Special Functions "On_blah"
     private void OnDrawGizmos()
     {
-        //if (vertices == null)
-        //    return;
-        
-
         if (drawGizmos)
         {
-            if (lastClickPos != null)
-            {
-                Gizmos.color = Color.magenta;
-                Gizmos.DrawSphere(transform.TransformPoint(lastClickPos), (float)radius / 20f);
-            }
+            //if (lastClickPos != null)
+            //{
+            //    Gizmos.color = Color.magenta;
+            //    Gizmos.DrawSphere(transform.TransformPoint(lastClickPos), (float)radius / 20f);
+            //}
             if (lastMouseOverPos != null)
             {
-                Gizmos.color = Color.black;
-                Gizmos.DrawSphere(transform.TransformPoint(lastMouseOverPos), (float)radius / 30);
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawSphere(transform.TransformPoint(lastMouseOverPos), (float)radius / 40);
             }
                 
 
@@ -710,8 +706,10 @@ public class SphereGrid : MonoBehaviour
             //(float)(r * Math.Sin(theta) * Math.Sin(phi)));// "Y"
             float x, y, z;
             x = relativeDir.x; y = relativeDir.z; z = relativeDir.y;
+            
+            //double phi = Math.Atan(y / x);
+            double phi = Math.Atan2(y, x);
             double theta = Math.Acos(z);
-            double phi = Math.Atan(y / x);
 
             int xCoord = (int)Math.Floor(phi / deltaPhi);
             xCoord = (xCoord + xSize) % xSize;
@@ -755,8 +753,9 @@ public class SphereGrid : MonoBehaviour
             float x, y, z;
             x = relativeDir.x; y = relativeDir.z; z = relativeDir.y;
             Debug.Log(String.Format("xyz relative {0},{1},{2}", x, y, z));
+
+            double phi = Math.Atan2(y, x);
             double theta = Math.Acos(z);
-            double phi = Math.Atan(y/x);
 
             int xCoord = (int)Math.Floor(phi/deltaPhi);
             xCoord = (xCoord + xSize)%xSize;

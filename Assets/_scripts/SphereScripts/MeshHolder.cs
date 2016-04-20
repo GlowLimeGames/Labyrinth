@@ -32,18 +32,28 @@ public class MeshHolder
     /// <param name="p2"></param>
     /// <param name="p3"></param>
     /// <param name="reverse"></param>
-    public void AddSquare(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, bool reverse)
+    public void AddSquare(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, bool reverse, bool surfacePoint)
     {
         verts.Add(p0);
         verts.Add(p1);
         verts.Add(p2);
         verts.Add(p3);
-        Vector3 norm = Vector3.Cross((p1 - p0), (p2 - p0));
-        norm.Normalize();
-        if (reverse)
-            norm = -norm;
-        normals.Add(norm); normals.Add(norm); normals.Add(norm); normals.Add(norm);
-
+        if (surfacePoint)
+        {
+            Vector3 n0 = p0 * (reverse ? -1 : 1); n0.Normalize();
+            Vector3 n1 = p0 * (reverse ? -1 : 1); n1.Normalize();
+            Vector3 n2 = p0 * (reverse ? -1 : 1); n2.Normalize();
+            Vector3 n3 = p0 * (reverse ? -1 : 1); n3.Normalize();
+            normals.Add(n0); normals.Add(n1); normals.Add(n2); normals.Add(n3);
+        }
+        else
+        {
+            Vector3 norm = Vector3.Cross((p1 - p0), (p2 - p0));
+            norm.Normalize();
+            if (reverse)
+                norm = -norm;
+            normals.Add(norm); normals.Add(norm); normals.Add(norm); normals.Add(norm);
+        }
 
         int v0,v1,v2,v3;
         v0 = nextTriIdx;
@@ -54,6 +64,8 @@ public class MeshHolder
         AddTriangleToList(v0, v1, v3, reverse);
         AddTriangleToList(v0, v3, v2, reverse);
     }
+
+
 
     public void AddTriangleToList( int tri1, int tri2, int tri3, bool reverse)
     {
