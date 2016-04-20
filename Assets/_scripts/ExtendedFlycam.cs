@@ -22,17 +22,22 @@ public class ExtendedFlycam : MonoBehaviour
 	*/
 
     public float cameraSensitivity = 90;
-    public float climbSpeed = 4;
+    public float climbSpeed = 15f;
     public float normalMoveSpeed = 10;
-    public float slowMoveFactor = 0.25f;
-    public float fastMoveFactor = 3;
+    public float slowMoveFactor = 1f;
+    public float fastMoveFactor = 5;
 
     private float rotationX = 0.0f;
     private float rotationY = 0.0f;
 
+    private bool isLocked = true;
+
     void Start()
     {
-        Screen.lockCursor = false;
+        
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = true;
+
     }
 
     void Update()
@@ -60,13 +65,25 @@ public class ExtendedFlycam : MonoBehaviour
             transform.position += transform.right * normalMoveSpeed * Input.GetAxis("Horizontal") * Time.deltaTime;
         }
 
+        if (isLocked)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = true;
+        }
+        else
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+           
 
         if (Input.GetKey(KeyCode.Q)) { transform.position += transform.up * climbSpeed * Time.deltaTime; }
         if (Input.GetKey(KeyCode.E)) { transform.position -= transform.up * climbSpeed * Time.deltaTime; }
 
-        if (Input.GetKeyDown(KeyCode.End))
+        if (Input.GetKey(KeyCode.Escape))
         {
-            Screen.lockCursor = (Screen.lockCursor == false) ? true : false;
+            //Screen.lockCursor = (Screen.lockCursor == false) ? true : false;
+            isLocked = !isLocked;
         }
     }
 }

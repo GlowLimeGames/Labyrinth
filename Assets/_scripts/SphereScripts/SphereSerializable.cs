@@ -8,27 +8,26 @@ public class SphereSerializable  {
     public double Radius { get; set; }
     public bool[][] WallHereJagged { get; set; }
 
-    //public float WallHeight { get; set; }
-    //public Vector3 LocalPos { get; set; }
-    //public Vector3 LocalEuler { get; set; }
-    //public Vector3 LocalScale { get; set; }
+    public float WallHeight { get; set; }
+    public Vector3 LocalPos { get; set; }
+    public Vector3 LocalEuler { get; set; }
+    public Vector3 LocalScale { get; set; }
 
     private SphereSerializable()
     {
 
     }
 
-    public SphereSerializable(bool isInverse, double radius, bool[][] wallHere)
-        //float wallHeight, Vector3 localPos, Vector3 localEuler, Vector3 localScale)
+    public SphereSerializable(bool isInverse, double radius, bool[][] wallHere, float wallHeight, Vector3 localPos, Vector3 localEuler, Vector3 localScale)
     {
         InsideOut = isInverse;
         Radius = radius;
         WallHereJagged = wallHere;
 
-        //WallHeight = wallHeight;
-        //LocalPos = localPos;
-        //LocalEuler = localEuler;
-        //LocalScale = localScale;
+        WallHeight = wallHeight;
+        LocalPos = localPos;
+        LocalEuler = localEuler;
+        LocalScale = localScale;
     }
 
 

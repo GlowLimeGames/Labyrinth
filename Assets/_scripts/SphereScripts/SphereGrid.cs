@@ -3,13 +3,14 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Resources;
 using System.Text;
 using System.Xml.Serialization;
 using UnityEngine.EventSystems;
 
-[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-[RequireComponent(typeof(MeshFilter), typeof(MeshCollider))]
 [RequireComponent(typeof(MeshFilter))]
+[RequireComponent(typeof(MeshRenderer))]
+[RequireComponent(typeof(MeshCollider))]
 public class SphereGrid : MonoBehaviour
 {
 
@@ -22,7 +23,6 @@ public class SphereGrid : MonoBehaviour
     public string wallPatternString;
     public string inputWallPath;
     public string outputWallPath;
-    public Material[] materials;
     private MeshHolder ground;
     private MeshHolder vertWalls;
     private MeshHolder horzWalls;
@@ -30,16 +30,14 @@ public class SphereGrid : MonoBehaviour
     private Vector3[] vertices;
     private Mesh mesh;
     private bool[,] wallHere;
-    private Vector3 lastClickPoint;
-    private int N;
-
-    private bool lastInsideOutSetting;
+    private Vector3 lastClickPos;
+    private Vector3 lastMouseOverPos;
+    
     #endregion
 
     #region Starting/Saving Functions
     private void Awake()
     {
-        lastInsideOutSetting = insideOut;
         if(!InputFileExists())
             SetUpWallPlan();
         
@@ -62,7 +60,7 @@ public class SphereGrid : MonoBehaviour
     {
         if (inputWallPath == "")
         {
-            Debug.Log("No input path");
+            //Debug.Log("No input path");
             return false;
         }
         try
@@ -76,6 +74,14 @@ public class SphereGrid : MonoBehaviour
                     var loadedSphere = (SphereSerializable)serializer.Deserialize(reader);
                     insideOut = loadedSphere.InsideOut;
                     radius = loadedSphere.Radius;
+                    wallHeight = loadedSphere.WallHeight;
+                    transform.localPosition = loadedSphere.LocalPos;
+                    //if (transform.localPosition == null)
+                    //    Debug.Log("Null transform");
+                    //else
+                    //    Debug.Log(String.Format("pos: {0}", transform.localPosition.ToString()));
+                    transform.localEulerAngles = loadedSphere.LocalEuler;
+                    transform.localScale = loadedSphere.LocalScale;
 
                     bool[][] jaggedWallArray = loadedSphere.WallHereJagged;
                     xSize = jaggedWallArray.Length;
@@ -109,7 +115,7 @@ public class SphereGrid : MonoBehaviour
     {
         if (String.IsNullOrEmpty(outputWallPath))
         {
-            Debug.Log("No output path");
+            //Debug.Log("No output path");
             return;
         }
         try
@@ -123,7 +129,12 @@ public class SphereGrid : MonoBehaviour
                     jaggedWallArray[i][j] = wallHere[i, j];
                 }
             }
-            SphereSerializable saveMe = new SphereSerializable(insideOut, radius, jaggedWallArray);
+            Vector3 pos, rot, scale;
+            pos = transform.localPosition;
+            rot = transform.localEulerAngles;
+            scale = transform.localScale;
+            SphereSerializable saveMe = new SphereSerializable(insideOut, radius, jaggedWallArray, 
+                                                                wallHeight, pos, rot, scale);
             string outputPath = @"Assets/SphereSaves/" + outputWallPath + ".xml";
             using (var stream = File.Create(outputPath))
             {
@@ -453,10 +464,8 @@ public class SphereGrid : MonoBehaviour
         GetComponent<MeshFilter>().mesh = mesh = new Mesh();
         mesh.Clear();
         // TODO add multiple materials for ground/floors etc
-        GetComponent<Renderer>().materials = materials;
+        //GetComponent<Renderer>().materials = materials;
         mesh.name = "Procedural Sphere";
-
-        N = 4 * xSize * ySize;
 
         // Used to calculate angle of verts relative to top-left vert
         double deltaPhi = 2 * Math.PI / xSize;
@@ -495,7 +504,7 @@ public class SphereGrid : MonoBehaviour
                     ExtrudePoint(ref p2);
                     ExtrudePoint(ref p3);
                 }
-                ground.AddSquare(p0, p1, p2, p3, insideOut);
+                ground.AddSquare(p0, p1, p2, p3, insideOut, true);
             }
         }
         //We we know how many verts that there are. Start filling the vertical wall holder
@@ -534,7 +543,7 @@ public class SphereGrid : MonoBehaviour
                     ExtrudePoint(ref bot_TL);
                     ExtrudePoint(ref bot_TR);
                 }
-                horzWalls.AddSquare(top_BL, top_BR, bot_TL, bot_TR, insideOut);
+                horzWalls.AddSquare(top_BL, top_BR, bot_TL, bot_TR, insideOut, false);
             }
         }
 
@@ -574,7 +583,7 @@ public class SphereGrid : MonoBehaviour
                     ExtrudePoint(ref right_BL);
                 }
                 //vertWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
-                horzWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
+                horzWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut, false);
             }
         }
 
@@ -586,6 +595,7 @@ public class SphereGrid : MonoBehaviour
         
         mesh.SetVertices(ground.verts);
         mesh.SetNormals(ground.normals);
+        //mesh.RecalculateNormals();
 
         mesh.subMeshCount = 2;
         mesh.SetTriangles(ground.tris, 0);
@@ -630,45 +640,50 @@ public class SphereGrid : MonoBehaviour
     #region Special Functions "On_blah"
     private void OnDrawGizmos()
     {
-        if (vertices == null)
-            return;
-
-        Gizmos.color = Color.magenta;
-        Gizmos.DrawSphere(transform.TransformPoint(lastClickPoint), (float) radius/8f);
-
         if (drawGizmos)
         {
-            Gizmos.color = Color.black;
-            for (int i = 0; i < vertices.Length; i++)
+            //if (lastClickPos != null)
+            //{
+            //    Gizmos.color = Color.magenta;
+            //    Gizmos.DrawSphere(transform.TransformPoint(lastClickPos), (float)radius / 20f);
+            //}
+            if (lastMouseOverPos != null)
             {
-                Gizmos.DrawSphere(transform.TransformPoint(vertices[i]), 0.1f);
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawSphere(transform.TransformPoint(lastMouseOverPos), (float)radius / 40);
             }
-            Gizmos.color = Color.magenta;
-            for (int y = 0; y < ySize; y++)
-            {
-                for (int x = 0; x < xSize; x++)
-                {
-                    if (wallHere[x, y])
-                    {
-                        int i = 2*x + (4*xSize)*y;
-                        int[] idxs = {i, i + 1, i + 2*xSize, i + 1 + 2*xSize};
-                        foreach (int idx in idxs)
-                        {
-                            Vector3 extrudeDir = vertices[idx].normalized;
-                            extrudeDir *= wallHeight;
-                            if (insideOut)
-                                extrudeDir *= -1;
-                            Gizmos.DrawRay(transform.TransformPoint(vertices[idx]), extrudeDir);
-                         }
-                    }
-                }
-            }
+                
+
+            //Gizmos.color = Color.black;
+            //for (int i = 0; i < vertices.Length; i++)
+            //{
+            //    Gizmos.DrawSphere(transform.TransformPoint(vertices[i]), 0.1f);
+            //}
+            //Gizmos.color = Color.magenta;
+            //for (int y = 0; y < ySize; y++)
+            //{
+            //    for (int x = 0; x < xSize; x++)
+            //    {
+            //        if (wallHere[x, y])
+            //        {
+            //            int i = 2*x + (4*xSize)*y;
+            //            int[] idxs = {i, i + 1, i + 2*xSize, i + 1 + 2*xSize};
+            //            foreach (int idx in idxs)
+            //            {
+            //                Vector3 extrudeDir = vertices[idx].normalized;
+            //                extrudeDir *= wallHeight;
+            //                if (insideOut)
+            //                    extrudeDir *= -1;
+            //                Gizmos.DrawRay(transform.TransformPoint(vertices[idx]), extrudeDir);
+            //             }
+            //        }
+            //    }
+            //}
         }
     }
 
-    void OnMouseDown()
+    void OnMouseOver()
     {
-
         var mousePos = Input.mousePosition;
         var hit = new RaycastHit();
         var ray = Camera.main.ScreenPointToRay(mousePos);
@@ -677,8 +692,52 @@ public class SphereGrid : MonoBehaviour
             var clickPos = hit.point;
             var relativePos = hit.point - transform.position;
             Quaternion undoRotation = Quaternion.Inverse(transform.rotation);
-            var relativeDir = lastClickPoint = undoRotation* relativePos;
-            lastClickPoint = relativeDir;
+            var relativeDir = lastMouseOverPos = undoRotation * relativePos;
+            relativeDir.Normalize();
+            //Debug.Log(String.Format("MouseP {0} ClickP {1} RelP {2} RelDir {3}",
+            //    mousePos, clickPos, relativePos, relativeDir));
+
+            // TODO Convert into angles using my spherical coordinates
+            double deltaPhi = 2 * Math.PI / xSize;
+            double deltaTheta = Math.PI / ySize;
+            //var p0 = new Vector3( // Add TL vert
+            //(float)(r * Math.Sin(theta) * Math.Cos(phi)), // "X" According to wikipedia convention
+            //(float)(r * Math.Cos(theta)), // Up Directions   "Z"
+            //(float)(r * Math.Sin(theta) * Math.Sin(phi)));// "Y"
+            float x, y, z;
+            x = relativeDir.x; y = relativeDir.z; z = relativeDir.y;
+            
+            //double phi = Math.Atan(y / x);
+            double phi = Math.Atan2(y, x);
+            double theta = Math.Acos(z);
+
+            int xCoord = (int)Math.Floor(phi / deltaPhi);
+            xCoord = (xCoord + xSize) % xSize;
+            int yCoord = (int)Math.Floor(theta / deltaTheta);
+
+            double newPhi = 2 * Math.PI * (xCoord + 0.5f) / xSize; // X angle
+            double newTheta = Math.PI * (yCoord + 0.5f) / ySize; // Y angle 
+
+            //lastMouseOverPos = new Vector3( // Add TL vert
+            //    (float)(radius * Math.Sin(newTheta) * Math.Cos(newPhi)), // "X"
+            //    (float)(radius * Math.Cos(newTheta)), // Up Directions "Z"
+            //    (float)(radius * Math.Sin(newTheta) * Math.Sin(newPhi)));// "Y"
+
+        }
+
+    }
+
+    void OnMouseDown()
+    {
+        var mousePos = Input.mousePosition;
+        var hit = new RaycastHit();
+        var ray = Camera.main.ScreenPointToRay(mousePos);
+        if (Physics.Raycast(ray, out hit))
+        {
+            var clickPos = hit.point;
+            var relativePos = hit.point - transform.position;
+            Quaternion undoRotation = Quaternion.Inverse(transform.rotation);
+            var relativeDir = lastClickPos = undoRotation* relativePos;
             relativeDir.Normalize();
             Debug.Log(String.Format("MouseP {0} ClickP {1} RelP {2} RelDir {3}",
                 mousePos, clickPos, relativePos, relativeDir));
@@ -693,20 +752,25 @@ public class SphereGrid : MonoBehaviour
             //(float)(r * Math.Sin(theta) * Math.Sin(phi)));// "Y"
             float x, y, z;
             x = relativeDir.x; y = relativeDir.z; z = relativeDir.y;
+            Debug.Log(String.Format("xyz relative {0},{1},{2}", x, y, z));
+
+            double phi = Math.Atan2(y, x);
             double theta = Math.Acos(z);
-            double phi = Math.Atan(y/x);
 
             int xCoord = (int)Math.Floor(phi/deltaPhi);
             xCoord = (xCoord + xSize)%xSize;
             int yCoord = (int)Math.Floor(theta/deltaTheta);
-            
 
-            Debug.Log(String.Format("X Y {0} {1}", xCoord, yCoord));
+
             if (xCoord >= 0 && xCoord < xSize && yCoord >= 0 && yCoord < ySize)
             {
-                Debug.Log("Successful placement");
+                Debug.Log(String.Format("Successful, x,y {0},{1}", xCoord, yCoord));
                 wallHere[xCoord, yCoord] = !wallHere[xCoord, yCoord];
                 GenerateAndExtrude();
+            }
+            else
+            {
+                Debug.Log(String.Format("Failed, x,y: {0},{1}", xCoord, yCoord));
             }
         }
     }
