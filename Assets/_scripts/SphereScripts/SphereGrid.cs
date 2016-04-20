@@ -7,9 +7,9 @@ using System.Text;
 using System.Xml.Serialization;
 using UnityEngine.EventSystems;
 
-[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
-[RequireComponent(typeof(MeshFilter), typeof(MeshCollider))]
 [RequireComponent(typeof(MeshFilter))]
+[RequireComponent(typeof(MeshRenderer))]
+[RequireComponent(typeof(MeshCollider))]
 public class SphereGrid : MonoBehaviour
 {
 
@@ -76,6 +76,10 @@ public class SphereGrid : MonoBehaviour
                     var loadedSphere = (SphereSerializable)serializer.Deserialize(reader);
                     insideOut = loadedSphere.InsideOut;
                     radius = loadedSphere.Radius;
+                    wallHeight = loadedSphere.WallHeight;
+                    transform.localPosition = loadedSphere.LocalPos;
+                    transform.localEulerAngles = loadedSphere.LocalEuler;
+                    transform.localScale = loadedSphere.LocalScale;
 
                     bool[][] jaggedWallArray = loadedSphere.WallHereJagged;
                     xSize = jaggedWallArray.Length;
@@ -123,7 +127,12 @@ public class SphereGrid : MonoBehaviour
                     jaggedWallArray[i][j] = wallHere[i, j];
                 }
             }
-            SphereSerializable saveMe = new SphereSerializable(insideOut, radius, jaggedWallArray);
+            Vector3 pos, rot, scale;
+            pos = transform.localPosition;
+            rot = transform.localEulerAngles;
+            scale = transform.localScale;
+            SphereSerializable saveMe = new SphereSerializable(insideOut, radius, jaggedWallArray, 
+                                                                wallHeight, pos, rot, scale);
             string outputPath = @"Assets/SphereSaves/" + outputWallPath + ".xml";
             using (var stream = File.Create(outputPath))
             {
