@@ -1686,18 +1686,18 @@
   </WallHereJagged>
   <WallHeight>2</WallHeight>
   <LocalPos>
-    <x>2.0186</x>
-    <y>-0.62915</y>
-    <z>-7.3879</z>
+    <x>0</x>
+    <y>1.72270656</y>
+    <z>21.648634</z>
   </LocalPos>
   <LocalEuler>
-    <x>0</x>
-    <y>131.705383</y>
-    <z>0</z>
+    <x>2.75137</x>
+    <y>180</y>
+    <z>180</z>
   </LocalEuler>
   <LocalScale>
-    <x>1.7299999</x>
-    <y>1.73000026</y>
-    <z>1.73000026</z>
+    <x>1</x>
+    <y>1</y>
+    <z>1</z>
   </LocalScale>
 </SphereSerializable>

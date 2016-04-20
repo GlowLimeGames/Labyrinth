@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Resources;
 using System.Text;
 using System.Xml.Serialization;
 using UnityEngine.EventSystems;
@@ -78,6 +79,10 @@ public class SphereGrid : MonoBehaviour
                     radius = loadedSphere.Radius;
                     wallHeight = loadedSphere.WallHeight;
                     transform.localPosition = loadedSphere.LocalPos;
+                    //if (transform.localPosition == null)
+                    //    Debug.Log("Null transform");
+                    //else
+                    //    Debug.Log(String.Format("pos: {0}", transform.localPosition.ToString()));
                     transform.localEulerAngles = loadedSphere.LocalEuler;
                     transform.localScale = loadedSphere.LocalScale;
 
