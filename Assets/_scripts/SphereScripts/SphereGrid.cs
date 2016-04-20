@@ -31,16 +31,14 @@ public class SphereGrid : MonoBehaviour
     private Vector3[] vertices;
     private Mesh mesh;
     private bool[,] wallHere;
-    private Vector3 lastClickPoint;
-    private int N;
-
-    private bool lastInsideOutSetting;
+    private Vector3 lastClickPos;
+    private Vector3 lastMouseOverPos;
+    
     #endregion
 
     #region Starting/Saving Functions
     private void Awake()
     {
-        lastInsideOutSetting = insideOut;
         if(!InputFileExists())
             SetUpWallPlan();
         
@@ -63,7 +61,7 @@ public class SphereGrid : MonoBehaviour
     {
         if (inputWallPath == "")
         {
-            Debug.Log("No input path");
+            //Debug.Log("No input path");
             return false;
         }
         try
@@ -118,7 +116,7 @@ public class SphereGrid : MonoBehaviour
     {
         if (String.IsNullOrEmpty(outputWallPath))
         {
-            Debug.Log("No output path");
+            //Debug.Log("No output path");
             return;
         }
         try
@@ -470,8 +468,6 @@ public class SphereGrid : MonoBehaviour
         GetComponent<Renderer>().materials = materials;
         mesh.name = "Procedural Sphere";
 
-        N = 4 * xSize * ySize;
-
         // Used to calculate angle of verts relative to top-left vert
         double deltaPhi = 2 * Math.PI / xSize;
         double deltaTheta = Math.PI / ySize;
@@ -644,45 +640,54 @@ public class SphereGrid : MonoBehaviour
     #region Special Functions "On_blah"
     private void OnDrawGizmos()
     {
-        if (vertices == null)
-            return;
-
-        Gizmos.color = Color.magenta;
-        Gizmos.DrawSphere(transform.TransformPoint(lastClickPoint), (float) radius/8f);
+        //if (vertices == null)
+        //    return;
+        
 
         if (drawGizmos)
         {
-            Gizmos.color = Color.black;
-            for (int i = 0; i < vertices.Length; i++)
+            if (lastClickPos != null)
             {
-                Gizmos.DrawSphere(transform.TransformPoint(vertices[i]), 0.1f);
+                Gizmos.color = Color.magenta;
+                Gizmos.DrawSphere(transform.TransformPoint(lastClickPos), (float)radius / 20f);
             }
-            Gizmos.color = Color.magenta;
-            for (int y = 0; y < ySize; y++)
+            if (lastMouseOverPos != null)
             {
-                for (int x = 0; x < xSize; x++)
-                {
-                    if (wallHere[x, y])
-                    {
-                        int i = 2*x + (4*xSize)*y;
-                        int[] idxs = {i, i + 1, i + 2*xSize, i + 1 + 2*xSize};
-                        foreach (int idx in idxs)
-                        {
-                            Vector3 extrudeDir = vertices[idx].normalized;
-                            extrudeDir *= wallHeight;
-                            if (insideOut)
-                                extrudeDir *= -1;
-                            Gizmos.DrawRay(transform.TransformPoint(vertices[idx]), extrudeDir);
-                         }
-                    }
-                }
+                Gizmos.color = Color.black;
+                Gizmos.DrawSphere(transform.TransformPoint(lastMouseOverPos), (float)radius / 30);
             }
+                
+
+            //Gizmos.color = Color.black;
+            //for (int i = 0; i < vertices.Length; i++)
+            //{
+            //    Gizmos.DrawSphere(transform.TransformPoint(vertices[i]), 0.1f);
+            //}
+            //Gizmos.color = Color.magenta;
+            //for (int y = 0; y < ySize; y++)
+            //{
+            //    for (int x = 0; x < xSize; x++)
+            //    {
+            //        if (wallHere[x, y])
+            //        {
+            //            int i = 2*x + (4*xSize)*y;
+            //            int[] idxs = {i, i + 1, i + 2*xSize, i + 1 + 2*xSize};
+            //            foreach (int idx in idxs)
+            //            {
+            //                Vector3 extrudeDir = vertices[idx].normalized;
+            //                extrudeDir *= wallHeight;
+            //                if (insideOut)
+            //                    extrudeDir *= -1;
+            //                Gizmos.DrawRay(transform.TransformPoint(vertices[idx]), extrudeDir);
+            //             }
+            //        }
+            //    }
+            //}
         }
     }
 
-    void OnMouseDown()
+    void OnMouseOver()
     {
-
         var mousePos = Input.mousePosition;
         var hit = new RaycastHit();
         var ray = Camera.main.ScreenPointToRay(mousePos);
@@ -691,8 +696,50 @@ public class SphereGrid : MonoBehaviour
             var clickPos = hit.point;
             var relativePos = hit.point - transform.position;
             Quaternion undoRotation = Quaternion.Inverse(transform.rotation);
-            var relativeDir = lastClickPoint = undoRotation* relativePos;
-            lastClickPoint = relativeDir;
+            var relativeDir = lastMouseOverPos = undoRotation * relativePos;
+            relativeDir.Normalize();
+            //Debug.Log(String.Format("MouseP {0} ClickP {1} RelP {2} RelDir {3}",
+            //    mousePos, clickPos, relativePos, relativeDir));
+
+            // TODO Convert into angles using my spherical coordinates
+            double deltaPhi = 2 * Math.PI / xSize;
+            double deltaTheta = Math.PI / ySize;
+            //var p0 = new Vector3( // Add TL vert
+            //(float)(r * Math.Sin(theta) * Math.Cos(phi)), // "X" According to wikipedia convention
+            //(float)(r * Math.Cos(theta)), // Up Directions   "Z"
+            //(float)(r * Math.Sin(theta) * Math.Sin(phi)));// "Y"
+            float x, y, z;
+            x = relativeDir.x; y = relativeDir.z; z = relativeDir.y;
+            double theta = Math.Acos(z);
+            double phi = Math.Atan(y / x);
+
+            int xCoord = (int)Math.Floor(phi / deltaPhi);
+            xCoord = (xCoord + xSize) % xSize;
+            int yCoord = (int)Math.Floor(theta / deltaTheta);
+
+            double newPhi = 2 * Math.PI * (xCoord + 0.5f) / xSize; // X angle
+            double newTheta = Math.PI * (yCoord + 0.5f) / ySize; // Y angle 
+
+            //lastMouseOverPos = new Vector3( // Add TL vert
+            //    (float)(radius * Math.Sin(newTheta) * Math.Cos(newPhi)), // "X"
+            //    (float)(radius * Math.Cos(newTheta)), // Up Directions "Z"
+            //    (float)(radius * Math.Sin(newTheta) * Math.Sin(newPhi)));// "Y"
+
+        }
+
+    }
+
+    void OnMouseDown()
+    {
+        var mousePos = Input.mousePosition;
+        var hit = new RaycastHit();
+        var ray = Camera.main.ScreenPointToRay(mousePos);
+        if (Physics.Raycast(ray, out hit))
+        {
+            var clickPos = hit.point;
+            var relativePos = hit.point - transform.position;
+            Quaternion undoRotation = Quaternion.Inverse(transform.rotation);
+            var relativeDir = lastClickPos = undoRotation* relativePos;
             relativeDir.Normalize();
             Debug.Log(String.Format("MouseP {0} ClickP {1} RelP {2} RelDir {3}",
                 mousePos, clickPos, relativePos, relativeDir));
@@ -707,20 +754,24 @@ public class SphereGrid : MonoBehaviour
             //(float)(r * Math.Sin(theta) * Math.Sin(phi)));// "Y"
             float x, y, z;
             x = relativeDir.x; y = relativeDir.z; z = relativeDir.y;
+            Debug.Log(String.Format("xyz relative {0},{1},{2}", x, y, z));
             double theta = Math.Acos(z);
             double phi = Math.Atan(y/x);
 
             int xCoord = (int)Math.Floor(phi/deltaPhi);
             xCoord = (xCoord + xSize)%xSize;
             int yCoord = (int)Math.Floor(theta/deltaTheta);
-            
 
-            Debug.Log(String.Format("X Y {0} {1}", xCoord, yCoord));
+
             if (xCoord >= 0 && xCoord < xSize && yCoord >= 0 && yCoord < ySize)
             {
-                Debug.Log("Successful placement");
+                Debug.Log(String.Format("Successful, x,y {0},{1}", xCoord, yCoord));
                 wallHere[xCoord, yCoord] = !wallHere[xCoord, yCoord];
                 GenerateAndExtrude();
+            }
+            else
+            {
+                Debug.Log(String.Format("Failed, x,y: {0},{1}", xCoord, yCoord));
             }
         }
     }
