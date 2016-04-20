@@ -18,6 +18,7 @@ public class SphereGrid : MonoBehaviour
     public int xSize, ySize;
     public double radius;
     public bool insideOut;
+    public bool openAtTop;
     public float wallHeight;
     public bool drawGizmos;
     public string wallPatternString;
@@ -472,9 +473,10 @@ public class SphereGrid : MonoBehaviour
         double deltaTheta = Math.PI / ySize;
         double r = radius;
 
+        int yStart = openAtTop ? 2 : 0;
         // Create a ground meshholder first and fill it with verts,tris, normals
         ground = new MeshHolder(0);
-        for (int y = 0; y < ySize; y++)
+        for (int y = yStart; y < ySize; y++)
         {
             for (int x = 0; x < xSize; x++)
             {
@@ -507,9 +509,9 @@ public class SphereGrid : MonoBehaviour
                 ground.AddSquare(p0, p1, p2, p3, insideOut, true);
             }
         }
-        //We we know how many verts that there are. Start filling the vertical wall holder
+        // Start placing North/South facing walls
         horzWalls = new MeshHolder(ground.nextTriIdx);
-        for (int y = 0; y < ySize - 1; y++)
+        for (int y = yStart; y < ySize-1; y++)
         {
             for (int x = 0; x < xSize; x++)
             {
@@ -547,7 +549,7 @@ public class SphereGrid : MonoBehaviour
             }
         }
 
-        //We we know how many verts that there are.Start filling the vertical wall holder
+        // Start placing East/West facing walls
         //vertWalls = new MeshHolder(ground.nextTriIdx);
         for (int y = 0; y < ySize; y++)
         {
