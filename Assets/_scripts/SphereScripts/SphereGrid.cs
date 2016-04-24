@@ -27,7 +27,9 @@ public class SphereGrid : MonoBehaviour
     private MeshHolder vertWalls;
     private MeshHolder horzWalls;
 
-    private Vector3[] vertices;
+    private Vector3[] vertices_ext;
+    private Vector3[] vertices_flat;
+    private Vector3[] vertices_dynamic;
     private Mesh mesh;
     private bool[,] wallHere;
     private Vector3 lastClickPos;
@@ -275,13 +277,13 @@ public class SphereGrid : MonoBehaviour
         return wallHere[x, y];
     }
 
-    private void ExtrudePoint(ref Vector3 point)
+    private Vector3 ExtrudePoint(Vector3 point)
     {
         Vector3 extrudeDir = point.normalized;
         extrudeDir *= wallHeight;
         if (insideOut)
             extrudeDir *= -1;
-        point += extrudeDir;
+        return point + extrudeDir;
     }
     
     void SetUpWallPlan()
@@ -499,12 +501,18 @@ public class SphereGrid : MonoBehaviour
                     (float) (r*Math.Sin(theta + deltaTheta)*Math.Sin(phi + deltaPhi)));
                 if (IsWall(x, y))
                 {
-                    ExtrudePoint(ref p0);
-                    ExtrudePoint(ref p1);
-                    ExtrudePoint(ref p2);
-                    ExtrudePoint(ref p3);
+                    var p0_ext = ExtrudePoint(p0);
+                    var p1_ext = ExtrudePoint(p1);
+                    var p2_ext = ExtrudePoint(p2);
+                    var p3_ext = ExtrudePoint(p3);
+                    ground.AddSquare(p0_ext, p1_ext, p2_ext, p3_ext,insideOut, true);
+                    ground.AddAltSquare(p0, p1, p2, p3);
                 }
-                ground.AddSquare(p0, p1, p2, p3, insideOut, true);
+                else
+                {
+                    ground.AddSquare(p0, p1, p2, p3, insideOut, true);
+                    ground.AddAltSquare(p0, p1, p2, p3);
+                }
             }
         }
         //We we know how many verts that there are. Start filling the vertical wall holder
@@ -524,11 +532,16 @@ public class SphereGrid : MonoBehaviour
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
-
+                Vector3 top_BL_ext, top_BR_ext;
                 if (IsWall(x, y))
                 {
-                    ExtrudePoint(ref top_BL);
-                    ExtrudePoint(ref top_BR);
+                    top_BL_ext = ExtrudePoint(top_BL);
+                    top_BR_ext = ExtrudePoint(top_BR);
+                }
+                else
+                {
+                    top_BL_ext = top_BL;
+                    top_BR_ext = top_BR;
                 }
                 var bot_TL = new Vector3( // Add BL vert
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
@@ -538,12 +551,19 @@ public class SphereGrid : MonoBehaviour
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi + deltaPhi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi + deltaPhi)));
+                Vector3 bot_TL_ext, bot_TR_ext;
                 if (IsWall(x, y + 1))
                 {
-                    ExtrudePoint(ref bot_TL);
-                    ExtrudePoint(ref bot_TR);
+                    bot_TL_ext = ExtrudePoint(bot_TL);
+                    bot_TR_ext = ExtrudePoint(bot_TR);
                 }
-                horzWalls.AddSquare(top_BL, top_BR, bot_TL, bot_TR, insideOut, false);
+                else
+                {
+                    bot_TL_ext = bot_TL;
+                    bot_TR_ext = bot_TR;
+                }
+                horzWalls.AddSquare(top_BL_ext, top_BR_ext, bot_TL_ext, bot_TR_ext, insideOut, false);
+                horzWalls.AddAltSquare(top_BL, top_BR, bot_TL, bot_TR);
             }
         }
 
@@ -564,11 +584,18 @@ public class SphereGrid : MonoBehaviour
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                Vector3 left_TR_ext, left_BR_ext;
                 if (IsWall(x - 1, y))
                 {
-                    ExtrudePoint(ref left_TR);
-                    ExtrudePoint(ref left_BR);
+                    left_TR_ext = ExtrudePoint(left_TR);
+                    left_BR_ext = ExtrudePoint(left_BR);
                 }
+                else
+                {
+                    left_TR_ext = left_TR;
+                    left_BR_ext = left_BR;
+                }
+                
                 var right_TL = new Vector3( // Add TL vert
                     (float)(r * Math.Sin(theta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta)),
@@ -577,13 +604,20 @@ public class SphereGrid : MonoBehaviour
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Cos(phi)),
                     (float)(r * Math.Cos(theta + deltaTheta)),
                     (float)(r * Math.Sin(theta + deltaTheta) * Math.Sin(phi)));
+                Vector3 right_TL_ext, right_BL_ext;
                 if (IsWall(x, y))
                 {
-                    ExtrudePoint(ref right_TL);
-                    ExtrudePoint(ref right_BL);
+                    right_TL_ext = ExtrudePoint(right_TL);
+                    right_BL_ext = ExtrudePoint(right_BL);
+                }
+                else
+                {
+                    right_TL_ext = right_TL;
+                    right_BL_ext = right_BL;
                 }
                 //vertWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut);
-                horzWalls.AddSquare(left_BR, left_TR, right_BL, right_TL, insideOut, false);
+                horzWalls.AddSquare(left_BR_ext, left_TR_ext, right_BL_ext, right_TL_ext, insideOut, false);
+                horzWalls.AddAltSquare(left_BR, left_TR, right_BL, right_TL);
             }
         }
 
@@ -592,10 +626,15 @@ public class SphereGrid : MonoBehaviour
         //ground.normals.AddRange(vertWalls.normals);
         ground.normals.AddRange(horzWalls.normals);
 
+        vertices_ext = ground.verts.ToArray();
+        vertices_dynamic = ground.verts.ToArray();
+        vertices_flat = ground.vertAlt.ToArray();
+
         
-        mesh.SetVertices(ground.verts);
+        //mesh.SetVertices(ground.verts);
+        mesh.vertices = vertices_dynamic;
         mesh.SetNormals(ground.normals);
-        //mesh.RecalculateNormals();
+        
 
         mesh.subMeshCount = 2;
         mesh.SetTriangles(ground.tris, 0);

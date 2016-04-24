@@ -9,6 +9,7 @@ using UnityEngine.Networking;
 public class MeshHolder
 {
     public List<Vector3> verts { get; set; }
+    public List<Vector3> vertAlt { get; set; }
     public List<int> tris { get; set; }
     public List<Vector3> normals { get; set; }
     public List<Vector2> uvs { get; set; }
@@ -18,6 +19,7 @@ public class MeshHolder
     public MeshHolder(int initialTriangleIndex)
     {
         verts = new List<Vector3>();
+        vertAlt = new List<Vector3>();
         tris = new List<int>();
         normals = new List<Vector3>();
         uvs = new List<Vector2>();
@@ -63,6 +65,14 @@ public class MeshHolder
         nextTriIdx += 4;
         AddTriangleToList(v0, v1, v3, reverse);
         AddTriangleToList(v0, v3, v2, reverse);
+    }
+
+    public void AddAltSquare(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3)
+    {
+        vertAlt.Add(p0);
+        vertAlt.Add(p1);
+        vertAlt.Add(p2);
+        vertAlt.Add(p3);
     }
 
 
